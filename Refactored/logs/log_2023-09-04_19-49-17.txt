@@ -1,0 +1,1 @@
+Epoch: 1, Loss: 8.0022, Acc: 0.0177, Masked-Acc: 0.0918, Top-5: 0.0449, Masked-5: 0.2919, Top-10: 0.0689, Masked-10: 0.4929
