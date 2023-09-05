@@ -15,11 +15,11 @@ def residual(x,num_filter):
     return x
 
 from create_transformer import Encoder
-h = 8  # Number of self-attention heads
+h = 12  # Number of self-attention heads
 d_k = 64  # Dimensionality of the linearly projected queries and keys
 d_v = 64  # Dimensionality of the linearly projected values
 d_ff = 2048  # Dimensionality of the inner fully connected layer
-d_model = 124  # Dimensionality of the model sub-layers' outputs
+d_model = 256  # Dimensionality of the model sub-layers' outputs
 n = 10  # Number of layers in the encoder stack
 dropout_rate = 0.1  # Frequency of dropping the input units in the dropout layers
 enc_vocab_size = 12*64 # Vocabulary size for the encoder
@@ -40,6 +40,7 @@ def create_A0(num_residuals):
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.concatenate([x,y])
     x = tf.keras.layers.Dense(8192,activation='relu')(x)
+    x = tf.keras.layers.Dense(8192,activation='relu')(x)
     x = tf.keras.layers.Dense(4096,activation='relu')(x)
     x = tf.keras.layers.Softmax()(x)
     output = x
@@ -56,35 +57,13 @@ gen = generate_batch()
 
 
 
-metric5 = tf.keras.metrics.TopKCategoricalAccuracy(k=5, name = "top5")
-metric10 = tf.keras.metrics.TopKCategoricalAccuracy(k=10,name = "top10")
 
-
-
-class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
-  def __init__(self, d_model, warmup_steps=4000):
-    super().__init__()
-
-    self.d_model = d_model
-    self.d_model = tf.cast(self.d_model, tf.float32)
-
-    self.warmup_steps = warmup_steps
-
-  def __call__(self, step):
-    step = tf.cast(step, dtype=tf.float32)
-    arg1 = tf.math.rsqrt(step)
-    arg2 = step * (self.warmup_steps ** -1.5)
-
-    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
-
-
-learning_rate = CustomSchedule(d_model)
 optimizer = tf.keras.optimizers.Adam(1e-6, beta_1=0.9, beta_2=0.98,
                                      epsilon=1e-9)
 
 
 
-generator.compile(optimizer=optimizer,loss='categorical_crossentropy',metrics=['accuracy',metric5,metric10])
+generator.compile(optimizer=optimizer)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
