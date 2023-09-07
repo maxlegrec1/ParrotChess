@@ -123,7 +123,7 @@ def train(num_step, generator):
         masked10.reset_state()
         masked1.reset_state()
         metric1.reset_state()
-        if epoch%40==0:
+        if epoch%40==0 and epoch!=0:
             #save weights
             generator.save_weights(f"generator_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{epoch}.h5")
         print(f"Epoch {epoch+1}:")
