@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-
+from chessparser import *
 from datetime import datetime
 
 def residual(x,num_filter):
@@ -50,10 +50,10 @@ def create_A0(num_residuals):
 generator = create_A0(40)
 generator.summary()
 
-#X_train,Y_train = #####
-from refactored2 import *
-gen = generate_batch()
-#x,y = next(gen)
+batch_size = 32
+pgn = "human.pgn"
+
+gen = generate_batch(batch_size,pgn)
 
 
 
@@ -155,13 +155,13 @@ def train(num_step, generator):
         print()  # Move to the next line after completing the epoch
 
 
-
+#tf.print("loading weights")
 #generator.load_weights(f"generator_2023-09-03_12-56-42_120.h5")
 #tf.print("weights loaded")
+
 #tf.print("going back to previous batches")
 #for i in tqdm(range(120*1000)):
     #next(gen)
-#generator.fit(gen,epochs=10000,steps_per_epoch=1000)
 train(1000, generator)
 
 
