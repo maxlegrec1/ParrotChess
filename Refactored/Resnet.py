@@ -49,18 +49,22 @@ def create_A0(num_residuals,use_transformer = True):
     x = tf.keras.layers.Dense(4096,activation='relu')(x)
     x = tf.keras.layers.Softmax()(x)
     output = x
-    return tf.keras.Model(inputs=[input,vocab,mask], outputs=output)
+
+    if use_transformer:
+        return tf.keras.Model(inputs=[input,vocab,mask], outputs=output)
+    else:
+        return tf.keras.Model(inputs=input, outputs=output)
 
 
-generator = create_A0(25,use_transformer=False)
-generator.summary()
+
 
 batch_size = 32
 pgn = "human.pgn"
+use_transformer = False
+gen = generate_batch(batch_size,pgn,use_transformer=use_transformer)
 
-gen = generate_batch(batch_size,pgn)
-
-
+generator = create_A0(25,use_transformer=use_transformer)
+generator.summary()
 
 
 optimizer = tf.keras.optimizers.Adam(1e-6, beta_1=0.9, beta_2=0.98,

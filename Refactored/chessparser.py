@@ -39,7 +39,7 @@ def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
     return np.array(input_data,dtype=np.float32)
 
 
-def generate_batch(batch_size,in_pgn):
+def generate_batch(batch_size,in_pgn,use_transformer = True):
     total_pos = 0
     x = []
     y_true = []
@@ -64,7 +64,10 @@ def generate_batch(batch_size,in_pgn):
                             Legal_moves = np.array(Legal_moves,dtype=np.float32)
                             Transformer_board = np.array(Transformer_board,dtype=np.int64)
                             Transformer_mask = np.array(Transformer_mask,dtype=np.int64)
-                            x = [x,Transformer_board,Transformer_mask]
+                            if use_transformer:
+                                x = [x,Transformer_board,Transformer_mask]
+                            else:
+                                x = x
                             yield (x,y_true,Legal_moves)
 
                             #reset variables
@@ -74,19 +77,24 @@ def generate_batch(batch_size,in_pgn):
                             Transformer_mask = []
                             y_true = []
 
-                        xs,ys,Legal_move,Tboard,Tmask = get_board_data(pgn,board,move)
+                        if use_transformer:
+                            xs,ys,Legal_move,Tboard,Tmask = get_board_data(pgn,board,move,use_transformer)
+
+                        else:
+                            xs,ys,Legal_move = get_board_data(pgn,board,move,use_transformer)
 
                         x.append(xs)
                         y_true.append(ys)
                         Legal_moves.append(Legal_move)
-                        Transformer_board.append(Tboard)
-                        Transformer_mask.append(Tmask)
+                        if use_transformer:
+                            Transformer_board.append(Tboard)
+                            Transformer_mask.append(Tmask)
 
                         total_pos+=1
 
 
 
-def get_board_data(pgn,board,move):
+def get_board_data(pgn,board,move,use_transformer = True):
     if board.turn == chess.WHITE:
         color = 1
         elo = pgn.headers["WhiteElo"]
@@ -104,12 +112,15 @@ def get_board_data(pgn,board,move):
     lm = np.zeros(4096,dtype=np.float32)
     for possible in board.legal_moves:
         lm[possible.from_square + possible.to_square*64] = 1
-    Tboard,Tmask = board_to_transformer_input(board)
+    if use_transformer:
+        Tboard,Tmask = board_to_transformer_input(board)
     board.push(move)
     move_id = move.from_square + move.to_square*64
     one_hot_move = np.zeros(4096,dtype=np.float32)
     one_hot_move[move_id] = 1
-
-    return np.concatenate((before,color,elo),axis=2),one_hot_move,lm,Tboard,Tmask
+    if use_transformer:
+        return np.concatenate((before,color,elo),axis=2),one_hot_move,lm,Tboard,Tmask
+    else:
+        return np.concatenate((before,color,elo),axis=2),one_hot_move,lm
 
 
