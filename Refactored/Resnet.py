@@ -71,14 +71,14 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 #custom training loop
 @tf.function
-def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
+def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1,stockfish):
     with tf.GradientTape() as tape:
-        x,y_true,mask = batch
+        x,y_true,mask,y_stock = batch
         y_pred = model(x)
         false_moves = (1-mask)*y_pred
         loss1 = tf.keras.losses.categorical_crossentropy(y_true,y_pred)
         loss2 = tf.keras.losses.MeanAbsoluteError()(false_moves,tf.zeros_like(false_moves))
-        loss = loss1+0.2*loss2
+        loss = loss1
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -93,6 +93,7 @@ def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
         metric1.update_state(y_true,y_pred)
         masked1.update_state(y_true,masked_pred)
 
+        stockfish.update_state(y_stock,y_true)
         return loss
 
 
@@ -106,7 +107,7 @@ def train(num_step, generator):
     metric1 = tf.keras.metrics.TopKCategoricalAccuracy(k=1, name = "Accuracy")
     metric5 = tf.keras.metrics.TopKCategoricalAccuracy(k=5, name = "top5")
     metric10 = tf.keras.metrics.TopKCategoricalAccuracy(k=10,name = "top10")
-
+    stockfish = tf.keras.metrics.SparseCategoricalAccuracy(name = "Stockfish")
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
 
@@ -118,6 +119,7 @@ def train(num_step, generator):
         masked10.reset_state()
         masked1.reset_state()
         metric1.reset_state()
+        stockfish.reset_state()
         if epoch%40==0:
             #save weights
             generator.save_weights(f"generator_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{epoch}.h5")
@@ -125,7 +127,7 @@ def train(num_step, generator):
 
         for step in range(num_step):
             batch = next(gen)
-            loss = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1)
+            loss = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1,stockfish)
             loss = tf.reduce_mean(loss)
             total_loss = total_loss / (step + 1) * step + loss / (step + 1)
 
@@ -135,11 +137,12 @@ def train(num_step, generator):
             masked5_result = masked5.result().numpy()
             masked10_result = masked10.result().numpy()
             masked1_result = masked1.result().numpy()
+            stockfish_result = stockfish.result().numpy()
             # Use carriage return to overwrite the current line
             print(
                 f"Step: {step}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Masked-Acc: {masked1_result:.4f}, "
                 f"Top-5: {metric5_result:.4f}, Masked-5: {masked5_result:.4f}, "
-                f"Top-10: {metric10_result:.4f}, Masked-10: {masked10_result:.4f}",
+                f"Top-10: {metric10_result:.4f}, Masked-10: {masked10_result:.4f}, Stockfish: {stockfish_result:.4f}",
                 end="\r"  # Return to the beginning of the line
             )
         # Write the results to the log file
@@ -157,7 +160,7 @@ def train(num_step, generator):
 #tf.print("weights loaded")
 #tf.print("going back to previous batches")
 #for i in tqdm(range(120*1000)):
-#    next(gen)
+    #next(gen)
 #generator.fit(gen,epochs=10000,steps_per_epoch=1000)
 train(1000, generator)
 

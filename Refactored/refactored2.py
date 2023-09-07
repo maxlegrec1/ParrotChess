@@ -24,9 +24,8 @@ def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
 
     return np.array(input_data,dtype=np.float32)
 
-
-
-
+stockfish = tf.keras.metrics.SparseCategoricalAccuracy()
+engine = chess.engine.SimpleEngine.popen_uci("stockfish")
 def generate_batch():
     prout = []
     batch_size = 32
@@ -37,6 +36,7 @@ def generate_batch():
     y_prob = []
     Transformer_board= []
     Transformer_mask = []
+    y_stock = []
     with open(in_pgn) as f:
         while True:
             pgn = chess.pgn.read_game(f)
@@ -58,12 +58,15 @@ def generate_batch():
                             Transformer_board = np.array(Transformer_board,dtype=np.int64)
                             Transformer_mask = np.array(Transformer_mask,dtype=np.int64)
                             x = [x,Transformer_board,Transformer_mask]
-                            yield (x,y_prob,prout)
+                            stockfish.update_state(y_stock,y_prob)
+                            print("stockfish",stockfish.result().numpy())
+                            yield (x,y_prob,prout,y_stock)
                             prout = []
                             x = []
                             Transformer_board = []
                             Transformer_mask = []
                             y_prob = []
+                            y_stock = []
                         total_pos+=1
                         if board.turn == chess.WHITE:
                             color = 1
@@ -89,6 +92,11 @@ def generate_batch():
                         Tboard,Tmask = board_to_transformer_input(board)
                         Transformer_board.append(Tboard)
                         Transformer_mask.append(Tmask)
+
+
+                        stockfish_move = engine.analyse(board, chess.engine.Limit(time=0.1))["pv"][0]
+                        y_stock.append(stockfish_move.from_square + stockfish_move.to_square*64)
+
                         board.push(move)
                         #print(move.uci,move.from_square,move.to_square)
                         move_id = move.from_square + move.to_square*64
@@ -96,5 +104,12 @@ def generate_batch():
                         one_hot_move = np.zeros(4096,dtype=np.float32)
                         one_hot_move[move_id] = 1
                         y_prob.append(one_hot_move)
+
                         #x.append(np.concatenate((before,legal_mask,color,elo),axis=2))
                         x.append(np.concatenate((before,color,elo),axis=2))
+
+gen = generate_batch()
+for _ in range(200):
+    next(gen)
+
+engine.quit()
