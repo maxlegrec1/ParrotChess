@@ -113,9 +113,3 @@ def get_board_data(pgn,board,move):
     return np.concatenate((before,color,elo),axis=2),one_hot_move,lm,Tboard,Tmask
 
 
-
-gen = generate_batch(32,"human.pgn")
-
-
-for _ in tqdm(range(1000)):
-    x,y,z= next(gen)
