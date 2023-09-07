@@ -132,7 +132,7 @@ def train(num_step, generator):
             batch = next(gen)
             loss,lm = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1)
             loss = tf.reduce_mean(loss)
-            lm = tf.reduce_mean(Legal_prob)
+            lm = tf.reduce_mean(lm)
             total_loss = total_loss / (step + 1) * step + loss / (step + 1)
             Legal_prob = Legal_prob / (step + 1) * step + lm / (step + 1)
 
