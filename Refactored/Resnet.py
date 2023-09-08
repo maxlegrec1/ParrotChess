@@ -58,12 +58,12 @@ def create_A0(num_residuals,use_transformer = True):
 
 
 
-batch_size = 32
+batch_size = 64
 pgn = "human.pgn"
 use_transformer = False
 gen = generate_batch(batch_size,pgn,use_transformer=use_transformer)
 
-generator = create_A0(25,use_transformer=use_transformer)
+generator = create_A0(40,use_transformer=use_transformer)
 generator.summary()
 
 
