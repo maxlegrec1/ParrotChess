@@ -86,11 +86,12 @@ def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
         y_pred = model(x)
         false_moves = (1-mask)*y_pred
         loss1 = tf.keras.losses.categorical_crossentropy(y_true,y_pred)
-        loss = loss1
+        lm = tf.reduce_sum(mask*y_pred,axis=-1)
+        loss = loss1 - lm
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        lm = tf.reduce_sum(mask*y_pred,axis=-1)
+
         masked_pred = tf.keras.layers.multiply([y_pred,mask])
         metric5.update_state(y_true,y_pred)
         metric10.update_state(y_true,y_pred)
@@ -101,7 +102,7 @@ def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
         metric1.update_state(y_true,y_pred)
         masked1.update_state(y_true,masked_pred)
 
-        return loss,lm
+        return loss1, lm
 
 
 
