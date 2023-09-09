@@ -66,7 +66,7 @@ def only_transformer():
     return tf.keras.Model(inputs=[vocab,mask], outputs=output)
 
 
-batch_size = 32
+batch_size = 64
 pgn = "human.pgn"
 use_transformer = False
 use_only_transformer = True
