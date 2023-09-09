@@ -7,9 +7,24 @@ from datetime import datetime
 def residual(x,num_filter):
     skip= x
     x = tf.keras.layers.Conv2D(num_filter, (3, 3), padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.ReLU()(x)
     x = tf.keras.layers.Conv2D(num_filter, (3, 3), padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
+
+    ####ADD SE BLOCK HERE
+    maxpool = tf.keras.layers.GlobalAveragePooling2D()(x)
+    maxpool = tf.keras.layers.Dense(32,activation='relu')(maxpool)
+    maxpool = tf.keras.layers.Dense(2*num_filter,activation='relu')(maxpool)
+    #split the maxpool into two parts
+    W = tf.keras.layers.Lambda(lambda x: x[...,:num_filter])(maxpool)
+    B = tf.keras.layers.Lambda(lambda x: x[...,num_filter:])(maxpool)
+    W = tf.keras.layers.Reshape((1,1,num_filter))(W)
+    B = tf.keras.layers.Reshape((1,1,num_filter))(B)
+    Z = tf.keras.activations.sigmoid(W)
+    x = x*Z + B
+    ####END SE BLOCK
+
     x = tf.keras.layers.add([skip, x])
     x = tf.keras.layers.ReLU()(x)
     return x
@@ -28,13 +43,14 @@ transformer = Encoder(enc_vocab_size, input_seq_length, h, d_k, d_v, d_model, d_
 
 def create_A0(num_residuals,use_transformer = True):
 
-    vocab = tf.keras.layers.Input(shape=(32))
-    mask = tf.keras.layers.Input(shape=(32,32))
+    vocab = tf.keras.layers.Input(shape=(33))
+    mask = tf.keras.layers.Input(shape=(33,33))
     input = tf.keras.Input(shape=(8, 8, 14))
 
     x = input
     x = tf.keras.layers.Conv2D(256, (3, 3), padding='same')(x)
-
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU()(x)
     for _ in range(num_residuals):
         x = residual(x, 256)
     x = tf.keras.layers.Conv2D(64, (3, 3), padding='same',activation='relu')(x)
@@ -45,6 +61,7 @@ def create_A0(num_residuals,use_transformer = True):
         y = tf.keras.layers.Flatten()(y)
         x = tf.keras.layers.concatenate([x,y])
 
+    x = tf.keras.layers.Dense(8192,activation='relu')(x)
     x = tf.keras.layers.Dense(4096,activation='relu')(x)
     x = tf.keras.layers.Dense(4096,activation='relu')(x)
     x = tf.keras.layers.Softmax()(x)
@@ -66,14 +83,13 @@ def only_transformer():
     return tf.keras.Model(inputs=[vocab,mask], outputs=output)
 
 
-batch_size = 64
+batch_size = 32
 pgn = "human.pgn"
-use_transformer = False
-use_only_transformer = True
-gen = generate_batch(batch_size,pgn,use_only_transformer=use_only_transformer)
 
-#generator = create_A0(25,use_transformer=use_transformer)
-generator = only_transformer()
+gen = generate_batch(batch_size,pgn)
+
+generator = create_A0(25)
+#generator = only_transformer()
 generator.summary()
 
 
