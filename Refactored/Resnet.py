@@ -22,8 +22,8 @@ d_ff = 2048  # Dimensionality of the inner fully connected layer
 d_model = 256  # Dimensionality of the model sub-layers' outputs
 n = 10  # Number of layers in the encoder stack
 dropout_rate = 0.1  # Frequency of dropping the input units in the dropout layers
-enc_vocab_size = 12*64 # Vocabulary size for the encoder
-input_seq_length = 32  # Maximum length of the input sequence
+enc_vocab_size = 12*64 + 2 # Vocabulary size for the encoder
+input_seq_length = 33  # Maximum length of the input sequence
 transformer = Encoder(enc_vocab_size, input_seq_length, h, d_k, d_v, d_model, d_ff, n, dropout_rate)
 
 def create_A0(num_residuals,use_transformer = True):
@@ -55,15 +55,25 @@ def create_A0(num_residuals,use_transformer = True):
     else:
         return tf.keras.Model(inputs=input, outputs=output)
 
-
+def only_transformer():
+    vocab = tf.keras.layers.Input(shape=(33))
+    mask = tf.keras.layers.Input(shape=(33,33))
+    y = transformer(vocab, mask, True)
+    y = tf.keras.layers.Flatten()(y)
+    output = tf.keras.layers.Dense(4096,activation='relu')(y)
+    output = tf.keras.layers.Dense(4096,activation='relu')(output)
+    output = tf.keras.layers.Softmax()(output)
+    return tf.keras.Model(inputs=[vocab,mask], outputs=output)
 
 
 batch_size = 32
 pgn = "human.pgn"
 use_transformer = False
-gen = generate_batch(batch_size,pgn,use_transformer=use_transformer)
+use_only_transformer = True
+gen = generate_batch(batch_size,pgn,use_only_transformer=use_only_transformer)
 
-generator = create_A0(25,use_transformer=use_transformer)
+#generator = create_A0(25,use_transformer=use_transformer)
+generator = only_transformer()
 generator.summary()
 
 

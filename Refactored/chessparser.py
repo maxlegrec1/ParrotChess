@@ -10,11 +10,18 @@ dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" 
 
 
 def board_to_transformer_input(board: chess.Board) -> np.ndarray:
-    bitboard = np.zeros(32,dtype=np.int64)
-    mask = np.zeros((32,32),dtype=np.int64)
+
+    if board.turn == chess.WHITE:
+        color = 1
+    else:
+        color = 0
+
+    bitboard = np.zeros(33,dtype=np.int64)
+    bitboard[0] = 12*64 + color
+    mask = np.zeros((33,33),dtype=np.int64)
     for i,piece in enumerate(board.piece_map()):
         #print(piece,board.piece_at(piece).symbol())
-        bitboard[i] = piece+dic_piece[board.piece_at(piece).symbol()]*64
+        bitboard[i+1] = piece+dic_piece[board.piece_at(piece).symbol()]*64
     mask_length = np.sum(np.where(bitboard!=0,1,0))
     mask[:mask_length,:mask_length] = 1
     return bitboard,mask
@@ -39,7 +46,7 @@ def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
     return np.array(input_data,dtype=np.float32)
 
 
-def generate_batch(batch_size,in_pgn,use_transformer = True):
+def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transformer = False):
     total_pos = 0
     x = []
     y_true = []
@@ -66,6 +73,8 @@ def generate_batch(batch_size,in_pgn,use_transformer = True):
                             Transformer_mask = np.array(Transformer_mask,dtype=np.int64)
                             if use_transformer:
                                 x = [x,Transformer_board,Transformer_mask]
+                            if use_only_transformer:
+                                x = [Transformer_board,Transformer_mask]
                             else:
                                 x = x
                             yield (x,y_true,Legal_moves)
