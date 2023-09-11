@@ -92,6 +92,7 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                         else:
                             xs,ys,Legal_move = get_board_data(pgn,board,move,use_transformer)
 
+
                         x.append(xs)
                         y_true.append(ys)
                         Legal_moves.append(Legal_move)
@@ -119,19 +120,24 @@ def get_board_data(pgn,board,move,use_transformer = True):
     elo = np.ones((8,8,1),dtype=np.float32)*elo
     before = board_to_input_data(board)
 
+
+
+    lm = np.zeros(1792,dtype=np.float32)
+    for possible in board.legal_moves:
+        possible_str = possible.uci() if len(possible.uci())==4 else possible.uci()[0:4]
+        lm[policy_index.index(possible_str)] = 1
+    if use_transformer:
+        Tboard,Tmask = board_to_transformer_input(board)
+
+
     #find the index of the move in policy_index
     move_id = policy_index.index(move.uci()) if len(move.uci())==4 else policy_index.index(move.uci()[0:4])
     one_hot_move = np.zeros(1792,dtype=np.float32)
     one_hot_move[move_id] = 1
 
-    lm = np.zeros(1792,dtype=np.float32)
-    for possible in board.legal_moves:
-        possible_str = possible.uci() if len(possible.uci())==4 else possible.uci()[0:4]
-
-        lm[policy_index.index(possible_str)] = 1
-    if use_transformer:
-        Tboard,Tmask = board_to_transformer_input(board)
     board.push(move)
+
+
 
     if use_transformer:
         return np.concatenate((before,color,elo),axis=2),one_hot_move,lm,Tboard,Tmask

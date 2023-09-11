@@ -83,17 +83,17 @@ def only_transformer():
     return tf.keras.Model(inputs=[vocab,mask], outputs=output)
 
 
-batch_size = 32
+batch_size = 64
 pgn = "human.pgn"
 
 gen = generate_batch(batch_size,pgn,use_transformer=False,use_only_transformer=False)
 
-generator = create_A0(40,use_transformer=False)
+generator = create_A0(6,use_transformer=False)
 #generator = only_transformer()
 generator.summary()
 
 
-optimizer = tf.keras.optimizers.Adam(1e-6, beta_1=0.9, beta_2=0.98,
+optimizer = tf.keras.optimizers.Adam(1e-5, beta_1=0.9, beta_2=0.98,
                                      epsilon=1e-9)
 
 
@@ -108,11 +108,14 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 @tf.function
 def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
     with tf.GradientTape() as tape:
+
+
+        metric1.reset_state()
+
+
         x,y_true,mask = batch
         y_pred = model(x)
-        false_moves = (1-mask)*y_pred
-        loss1 = tf.keras.losses.categorical_crossentropy(y_true,y_pred)
-        loss = loss1
+        loss = tf.keras.losses.categorical_crossentropy(y_true,y_pred)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -121,13 +124,15 @@ def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
         metric5.update_state(y_true,y_pred)
         metric10.update_state(y_true,y_pred)
 
+
         masked5.update_state(y_true,masked_pred)
         masked10.update_state(y_true,masked_pred)
-
+        #tf.print(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1))
+        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
         metric1.update_state(y_true,y_pred)
         masked1.update_state(y_true,masked_pred)
 
-        return loss,lm
+        return loss,lm,acc
 
 
 
@@ -146,6 +151,7 @@ def train(num_step, generator):
     for epoch in range(10000):
         total_loss = 0
         Legal_prob = 0
+        accuracy = 0
         metric5.reset_state()
         metric10.reset_state()
         masked5.reset_state()
@@ -159,13 +165,13 @@ def train(num_step, generator):
 
         for step in range(num_step):
             batch = next(gen)
-            loss,lm = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1)
+            loss,lm,acc = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1)
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)
             total_loss = total_loss / (step + 1) * step + loss / (step + 1)
             Legal_prob = Legal_prob / (step + 1) * step + lm / (step + 1)
 
-            accuracy = metric1.result().numpy()
+            accuracy = accuracy / (step + 1) * step + acc / (step + 1)
             metric5_result = metric5.result().numpy()
             metric10_result = metric10.result().numpy()
             masked5_result = masked5.result().numpy()
