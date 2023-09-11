@@ -63,7 +63,7 @@ def create_A0(num_residuals,use_transformer = True):
 
     x = tf.keras.layers.Dense(8192,activation='relu')(x)
     x = tf.keras.layers.Dense(4096,activation='relu')(x)
-    x = tf.keras.layers.Dense(4096,activation='relu')(x)
+    x = tf.keras.layers.Dense(1792,activation='relu')(x)
     x = tf.keras.layers.Softmax()(x)
     output = x
 
@@ -86,9 +86,9 @@ def only_transformer():
 batch_size = 32
 pgn = "human.pgn"
 
-gen = generate_batch(batch_size,pgn)
+gen = generate_batch(batch_size,pgn,use_transformer=False,use_only_transformer=False)
 
-generator = create_A0(25)
+generator = create_A0(40,use_transformer=False)
 #generator = only_transformer()
 generator.summary()
 
