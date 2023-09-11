@@ -342,9 +342,3 @@ policy_index = [
     "h8f7", "h8g7", "h8h7", "h8a8", "h8b8", "h8c8", "h8d8", "h8e8", "h8f8",
     "h8g8"]
 
-
-
-gen = generate_batch(32,"human.pgn")
-
-for _ in tqdm(range(1000)):
-    next(gen)
