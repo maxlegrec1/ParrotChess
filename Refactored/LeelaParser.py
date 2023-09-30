@@ -114,15 +114,15 @@ if __name__ == "__main__":
             x,y,z,q,m = next(generator)
             #transpose x to NHWC
             x = tf.transpose(x, [0, 2, 3, 1])
-            x = tf.concat([x[:,:,:,:12],tf.expand_dims(x[:,:,:,108],axis=-1)],axis=-1)
+            #x = tf.concat([x[:,:,:,:12],tf.expand_dims(x[:,:,:,108],axis=-1)],axis=-1)
             #calculate number of white moves, x[:,:,:,108] is the white move plane, all ones when its blacks turn
-            whites = tf.reduce_sum(x[:,:,:,12],[1,2])
-            whites = tf.greater_equal(whites,0)
-            whites = tf.cast(whites, tf.float32)
-            whites = tf.reduce_sum(whites)
-            white_nums +=whites
-            tot += 256
-            tf.print(white_nums/tot)
+            #whites = tf.reduce_sum(x[:,:,:,12],[1,2])
+            #whites = tf.greater_equal(whites,0)
+            #whites = tf.cast(whites, tf.float32)
+            #whites = tf.reduce_sum(whites)
+            #white_nums +=whites
+            #tot += 256
+            #tf.print(white_nums/tot)
             yield(x,y)
     gen = make_gen(train_iter)
 
@@ -144,4 +144,6 @@ if __name__ == "__main__":
                         nesterov=True)
     generator.compile(optimizer=optimizer)
 
+    x,y = next(gen)
+    print(x.shape)
     train(1000, generator,gen)

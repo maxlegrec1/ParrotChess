@@ -105,7 +105,7 @@ def conv_block(inputs,
     return tf.keras.layers.Activation('relu')(
         batch_norm(conv, name=name + '/bn', scale=bn_scale))
 
-input = tf.keras.layers.Input(shape=(8,8,13))
+input = tf.keras.layers.Input(shape=(8,8,112))
 
 x = create_body(input,num_residuals=6)
 
