@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from chessparser import *
 from datetime import datetime
-
+import multiprocessing as mp
 def residual(x,num_filter):
     skip= x
     x = tf.keras.layers.Conv2D(num_filter, (3, 3), padding='same')(x)
@@ -83,22 +83,32 @@ def only_transformer():
     return tf.keras.Model(inputs=[vocab,mask], outputs=output)
 
 
-batch_size = 64
-pgn = "human.pgn"
+batch_size = 32
+pgn = "../../Gigachad/pros.pgn"
 
-gen = generate_batch(batch_size,pgn,use_transformer=False,use_only_transformer=False)
+#from Create_Leela import create_leela
 
-generator = create_A0(6,use_transformer=False)
+#generator = create_leela()
 #generator = only_transformer()
-generator.summary()
+#generator.summary()
+
+lr = 2e-2
+warmup_steps = 2000
+lr_start = 1e-5
+active_lr = tf.Variable(lr_start, dtype=tf.float32,trainable=False)
+#optimizer = tf.keras.optimizers.Adam(1e-5, beta_1=0.9, beta_2=0.98,
+#                                     epsilon=1e-9)
+optimizer = tf.keras.optimizers.SGD(
+                    learning_rate=active_lr,
+                    momentum=0.9,
+                    nesterov=True)
+from chessparser import *
+#gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 
-optimizer = tf.keras.optimizers.Adam(1e-5, beta_1=0.9, beta_2=0.98,
-                                     epsilon=1e-9)
 
 
-
-generator.compile(optimizer=optimizer)
+#generator.compile(optimizer=optimizer)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
@@ -106,31 +116,26 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 #custom training loop
 @tf.function
-def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
+def train_step(batch,model):
     with tf.GradientTape() as tape:
-
-
-        metric1.reset_state()
-
-
-        x,y_true,mask = batch
+        x,y_true = batch
+        #all non negative values should be 1
+        mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
+        y_true = tf.nn.relu(y_true)
         y_pred = model(x)
-        loss = tf.keras.losses.categorical_crossentropy(y_true,y_pred)
+        #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
+        loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
         gradients = tape.gradient(loss, model.trainable_variables)
+        #clip gradients
+        gradients, _ = tf.clip_by_global_norm(gradients, 10000)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        lm = tf.reduce_sum(mask*y_pred,axis=-1)
-        masked_pred = tf.keras.layers.multiply([y_pred,mask])
-        metric5.update_state(y_true,y_pred)
-        metric10.update_state(y_true,y_pred)
+        lm = tf.reduce_sum(mask*tf.keras.layers.Softmax()(y_pred),axis=-1)
 
 
-        masked5.update_state(y_true,masked_pred)
-        masked10.update_state(y_true,masked_pred)
+
         #tf.print(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1))
         acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
-        metric1.update_state(y_true,y_pred)
-        masked1.update_state(y_true,masked_pred)
 
         return loss,lm,acc
 
@@ -138,26 +143,16 @@ def train_step(batch,model,metric5,metric10,masked5,masked10,metric1,masked1):
 
 
 
-def train(num_step, generator):
-    masked1 = tf.keras.metrics.TopKCategoricalAccuracy(k=1, name = "masked_Acc")
-    masked5 = tf.keras.metrics.TopKCategoricalAccuracy(k=5, name = "masked5")
-    masked10 = tf.keras.metrics.TopKCategoricalAccuracy(k=10, name = "masked10")
-    metric1 = tf.keras.metrics.TopKCategoricalAccuracy(k=1, name = "Accuracy")
-    metric5 = tf.keras.metrics.TopKCategoricalAccuracy(k=5, name = "top5")
-    metric10 = tf.keras.metrics.TopKCategoricalAccuracy(k=10,name = "top10")
+def train(num_step, generator,gen):
+
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
-
+    total_steps = 0
     for epoch in range(10000):
         total_loss = 0
         Legal_prob = 0
         accuracy = 0
-        metric5.reset_state()
-        metric10.reset_state()
-        masked5.reset_state()
-        masked10.reset_state()
-        masked1.reset_state()
-        metric1.reset_state()
+
         if epoch%40==0 and epoch!=0:
             #save weights
             generator.save_weights(f"generator_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{epoch}.h5")
@@ -165,34 +160,28 @@ def train(num_step, generator):
 
         for step in range(num_step):
             batch = next(gen)
-            loss,lm,acc = train_step(batch, generator, metric5, metric10,masked5,masked10,metric1,masked1)
+            active_lr_float = lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps)
+            #active_lr_float = lr_start
+            optimizer.lr.assign(active_lr_float)
+            loss,lm,acc = train_step(batch, generator)
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)
             total_loss = total_loss / (step + 1) * step + loss / (step + 1)
             Legal_prob = Legal_prob / (step + 1) * step + lm / (step + 1)
 
             accuracy = accuracy / (step + 1) * step + acc / (step + 1)
-            metric5_result = metric5.result().numpy()
-            metric10_result = metric10.result().numpy()
-            masked5_result = masked5.result().numpy()
-            masked10_result = masked10.result().numpy()
-            masked1_result = masked1.result().numpy()
+            total_steps += 1
             # Use carriage return to overwrite the current line
             print(
-                f"Step: {step}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Masked-Acc: {masked1_result:.4f}, Legal_prob: {Legal_prob:.4f}, "
-                f"Top-5: {metric5_result:.4f}, Masked-5: {masked5_result:.4f}, "
-                f"Top-10: {metric10_result:.4f}, Masked-10: {masked10_result:.4f}, ",
-                end="\r"  # Return to the beginning of the line
-            )
+                f"Step: {step}, Lr: {active_lr_float:.4f}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}"
+                ,end="\r")
         # Write the results to the log file
         log_file.write(
-            f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Masked-Acc: {masked1_result:.4f}, Legal_prob: {Legal_prob:.4f}, "
-            f"Top-5: {metric5_result:.4f}, Masked-5: {masked5_result:.4f}, "
-            f"Top-10: {metric10_result:.4f}, Masked-10: {masked10_result:.4f}\n"
+            f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f} \n"
         )
         log_file.flush()
         print()  # Move to the next line after completing the epoch
-
+        
 
 #tf.print("loading weights")
 #generator.load_weights(f"generator_2023-09-03_12-56-42_120.h5")
@@ -201,8 +190,6 @@ def train(num_step, generator):
 #tf.print("going back to previous batches")
 #for i in tqdm(range(120*1000)):
     #next(gen)
-train(1000, generator)
-
-
+#train(1000, generator)
 
 
