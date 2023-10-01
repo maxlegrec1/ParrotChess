@@ -1,6 +1,6 @@
 *.pgn
 *.h5
 *.exe
-*.txt
+Refactored/logs/*.txt
 *.pyc
 
