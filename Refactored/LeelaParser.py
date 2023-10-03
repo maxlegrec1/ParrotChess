@@ -124,8 +124,12 @@ if __name__ == "__main__":
             #tot += 256
             #tf.print(white_nums/tot)
             yield(x,y)
-    gen = make_gen(train_iter)
+    #gen = make_gen(train_iter)
+    from chessparser import *
+    batch_size = 256
+    gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
+    
     from Resnet import *
     from Create_Leela import create_leela
     generator = create_leela()

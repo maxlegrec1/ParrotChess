@@ -126,17 +126,17 @@ def get_board_data(pgn,board,move,use_transformer = True):
 
 
 
-    lm = np.zeros(1792,dtype=np.float32)
+    lm = np.zeros(1858,dtype=np.float32)
     for possible in board.legal_moves:
-        possible_str = possible.uci() if len(possible.uci())==4 else possible.uci()[0:4]
+        possible_str = possible.uci()
         lm[policy_index.index(possible_str)] = 1
     if use_transformer:
         Tboard,Tmask = board_to_transformer_input(board)
 
 
     #find the index of the move in policy_index
-    move_id = policy_index.index(move.uci()) if len(move.uci())==4 else policy_index.index(move.uci()[0:4])
-    one_hot_move = np.zeros(1792,dtype=np.float32)
+    move_id = policy_index.index(move.uci())
+    one_hot_move = np.zeros(1858,dtype=np.float32)
     one_hot_move[move_id] = 1
 
     board.push(move)
@@ -350,7 +350,16 @@ policy_index = [
     "g8c8", "g8d8", "g8e8", "g8f8", "g8h8", "h8a1", "h8h1", "h8b2", "h8h2",
     "h8c3", "h8h3", "h8d4", "h8h4", "h8e5", "h8h5", "h8f6", "h8g6", "h8h6",
     "h8f7", "h8g7", "h8h7", "h8a8", "h8b8", "h8c8", "h8d8", "h8e8", "h8f8",
-    "h8g8"]
+    "h8g8", "a7a8q", "a7a8r", "a7a8b", "a7b8q", "a7b8r", "a7b8b", "b7a8q",
+    "b7a8r", "b7a8b", "b7b8q", "b7b8r", "b7b8b", "b7c8q", "b7c8r", "b7c8b",
+    "c7b8q", "c7b8r", "c7b8b", "c7c8q", "c7c8r", "c7c8b", "c7d8q", "c7d8r",
+    "c7d8b", "d7c8q", "d7c8r", "d7c8b", "d7d8q", "d7d8r", "d7d8b", "d7e8q",
+    "d7e8r", "d7e8b", "e7d8q", "e7d8r", "e7d8b", "e7e8q", "e7e8r", "e7e8b",
+    "e7f8q", "e7f8r", "e7f8b", "f7e8q", "f7e8r", "f7e8b", "f7f8q", "f7f8r",
+    "f7f8b", "f7g8q", "f7g8r", "f7g8b", "g7f8q", "g7f8r", "g7f8b", "g7g8q",
+    "g7g8r", "g7g8b", "g7h8q", "g7h8r", "g7h8b", "h7g8q", "h7g8r", "h7g8b",
+    "h7h8q", "h7h8r", "h7h8b"
+]
 
 
 
@@ -369,7 +378,11 @@ def generator_uniform(generator,batch_size):
                 xs.append(x[i])
                 ys.append(y[i])
                 Lms.append(Lm[i])
-            yield np.array(xs),np.array(ys),np.array(Lms)
+            xs = np.array(xs)
+            ys = np.array(ys)
+            Lms = np.array(Lms)
+            xs = xs + (1-Lms)    
+            yield np.array(xs),np.array(ys)
             xs=[]
             ys=[]
             Lms=[]
