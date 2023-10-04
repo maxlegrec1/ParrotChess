@@ -52,7 +52,6 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
     y_true = []
     Transformer_board= []
     Transformer_mask = []
-    Legal_moves = []
     with open(in_pgn) as f:
         while True:
             #load game
@@ -68,7 +67,6 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                         if total_pos%batch_size==0 and total_pos!=0:
                             x = np.array(x,dtype=np.float32)
                             y_true = np.array(y_true,dtype=np.float32)
-                            Legal_moves = np.array(Legal_moves,dtype=np.float32)
                             Transformer_board = np.array(Transformer_board,dtype=np.int64)
                             Transformer_mask = np.array(Transformer_mask,dtype=np.int64)
                             if use_transformer:
@@ -76,30 +74,38 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                             if use_only_transformer:
                                 x = [Transformer_board,Transformer_mask]
                             else:
-                                x = x
-                            if not only_white:    
-                                yield (x,y_true,Legal_moves)
-                            elif only_white and board.turn == chess.WHITE:
-                                yield (x,y_true,Legal_moves)
+                                x = x 
+                            yield (x,y_true)
 
 
                             #reset variables
-                            Legal_moves = []
                             x = []
                             Transformer_board = []
                             Transformer_mask = []
                             y_true = []
 
                         if use_transformer:
-                            xs,ys,Legal_move,Tboard,Tmask = get_board_data(pgn,board,move,use_transformer)
+                            xs,ys,Tboard,Tmask = get_board_data(pgn,board,move,use_transformer)
 
                         else:
-                            xs,ys,Legal_move = get_board_data(pgn,board,move,use_transformer)
+                            if only_white and board.turn == chess.BLACK:
+                                board.push(move)
+                            elif only_white and board.turn == chess.WHITE:
+                                if move.uci()[-1]=='n':
+                                    board.push(move)
+                                else:
+                                    xs,ys = get_board_data(pgn,board,move,use_transformer)
+                                    x.append(xs)
+                                    y_true.append(ys)
+                                    total_pos+=1
+                            
+                            else:
+                                xs,ys = get_board_data(pgn,board,move,use_transformer)
+                                x.append(xs)
+                                y_true.append(ys)
+                                total_pos+=1
 
 
-                        x.append(xs)
-                        y_true.append(ys)
-                        Legal_moves.append(Legal_move)
                         if use_transformer:
                             Transformer_board.append(Tboard)
                             Transformer_mask.append(Tmask)
@@ -129,24 +135,27 @@ def get_board_data(pgn,board,move,use_transformer = True):
     lm = np.zeros(1858,dtype=np.float32)
     for possible in board.legal_moves:
         possible_str = possible.uci()
-        lm[policy_index.index(possible_str)] = 1
+        if possible_str[-1]!='n':
+            lm[policy_index.index(possible_str)] = 1
     if use_transformer:
         Tboard,Tmask = board_to_transformer_input(board)
 
 
     #find the index of the move in policy_index
+
     move_id = policy_index.index(move.uci())
+
     one_hot_move = np.zeros(1858,dtype=np.float32)
     one_hot_move[move_id] = 1
 
     board.push(move)
 
-
+    one_hot_move = one_hot_move + (1-lm)
 
     if use_transformer:
-        return np.concatenate((before,color,elo),axis=2),one_hot_move,lm,Tboard,Tmask
+        return np.concatenate((before,color,elo),axis=2),one_hot_move,Tboard,Tmask
     else:
-        return np.concatenate((before,color,elo),axis=2),one_hot_move,lm
+        return np.concatenate((before,color,elo),axis=2),one_hot_move
 
 
 
@@ -371,18 +380,19 @@ def generator_uniform(generator,batch_size):
         
         xs=[]
         ys=[]
-        Lms=[]
         for i in range(batch_size):
             for j in range(batch_size):
-                x,y,Lm = n_batches[j]
+                x,y= n_batches[j]
                 xs.append(x[i])
                 ys.append(y[i])
-                Lms.append(Lm[i])
             xs = np.array(xs)
             ys = np.array(ys)
-            Lms = np.array(Lms)
-            xs = xs + (1-Lms)    
             yield np.array(xs),np.array(ys)
             xs=[]
             ys=[]
-            Lms=[]
+
+
+gen = generator_uniform(generate_batch(256,"human.pgn",use_transformer=False,only_white=True),256)
+
+x,y = next(gen)
+print(x.shape)
