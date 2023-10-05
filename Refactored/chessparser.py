@@ -64,7 +64,7 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                     for move in moves[:10]:
                         board.push(move)
                     for move in moves[10:]:
-                        if total_pos%batch_size==0 and total_pos!=0:
+                        if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
                             y_true = np.array(y_true,dtype=np.float32)
                             Transformer_board = np.array(Transformer_board,dtype=np.int64)
@@ -110,7 +110,6 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                             Transformer_board.append(Tboard)
                             Transformer_mask.append(Tmask)
 
-                        total_pos+=1
 
 
 
@@ -132,11 +131,11 @@ def get_board_data(pgn,board,move,use_transformer = True):
 
 
 
-    lm = np.zeros(1858,dtype=np.float32)
+    lm =  - np.ones(1858,dtype=np.float32)
     for possible in board.legal_moves:
         possible_str = possible.uci()
         if possible_str[-1]!='n':
-            lm[policy_index.index(possible_str)] = 1
+            lm[policy_index.index(possible_str)] = 0
     if use_transformer:
         Tboard,Tmask = board_to_transformer_input(board)
 
@@ -150,7 +149,7 @@ def get_board_data(pgn,board,move,use_transformer = True):
 
     board.push(move)
 
-    one_hot_move = one_hot_move + (1-lm)
+    one_hot_move = one_hot_move + lm
 
     if use_transformer:
         return np.concatenate((before,color,elo),axis=2),one_hot_move,Tboard,Tmask
@@ -392,7 +391,13 @@ def generator_uniform(generator,batch_size):
             ys=[]
 
 
-gen = generator_uniform(generate_batch(256,"human.pgn",use_transformer=False,only_white=True),256)
+gen = generator_uniform(generate_batch(64,"human.pgn",use_transformer=False,only_white=True),64)
 
-x,y = next(gen)
-print(x.shape)
+for _ in range(100):
+    x,y = next(gen)
+    #see if x or y contains nans
+    assert not np.isnan(x).any()
+    assert not np.isnan(y).any()
+    #count the number of times y is greater than 0
+    print(np.sum(y[0]>0))
+    print(x.shape,y.shape)
