@@ -48,12 +48,11 @@ def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
     return np.array(input_data,dtype=np.float32)
 
 
-def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transformer = False,only_white = False):
+def generate_batch(batch_size,in_pgn):
     total_pos = 0
     x = []
     y_true = []
-    Transformer_board= []
-    Transformer_mask = []
+    history = 7
     with open(in_pgn) as f:
         while True:
             #load game
@@ -63,65 +62,68 @@ def generate_batch(batch_size,in_pgn,use_transformer = True, use_only_transforme
                 if len(moves)>=10:
                     #make the 10 first moves 
                     board = chess.Board()
+                    x_start = []
                     for move in moves[:10]:
-                        board.push(move)
-                    for move in moves[10:]:
+                        #board.push(move)
+                        xs,ys = get_board_data(pgn,board,move)
+                        x_start.append(xs)
+                    #x_start = np.array(x_start,dtype=np.float32)
+                    x_start = x_start[10-(history):]
+                    x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
+                    #print(x_start.shape)
+                    for i,move in enumerate(moves[10:]):
+                        #print(total_pos)
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
                             y_true = np.array(y_true,dtype=np.float32)
-                            Transformer_board = np.array(Transformer_board,dtype=np.int64)
-                            Transformer_mask = np.array(Transformer_mask,dtype=np.int64)
-                            if use_transformer:
-                                x = [x,Transformer_board,Transformer_mask]
-                            if use_only_transformer:
-                                x = [Transformer_board,Transformer_mask]
-                            else:
-                                x = x 
                             yield (x,y_true)
 
 
                             #reset variables
+                            last_x = x[-1]
                             x = []
-                            Transformer_board = []
-                            Transformer_mask = []
                             y_true = []
 
-                        if use_transformer:
-                            xs,ys,Tboard,Tmask = get_board_data(pgn,board,move,use_transformer)
-
+                        if move.uci()[-1]=='n':
+                            break
+                        xs,ys = get_board_data(pgn,board,move)
+                        if i == 0 :
+                            x.append(np.concatenate((x_start,xs),axis=-1))
                         else:
-                            if only_white and board.turn == chess.BLACK:
-                                board.push(move)
-                            elif only_white and board.turn == chess.WHITE:
-                                if move.uci()[-1]=='n':
-                                    board.push(move)
-                                else:
-                                    xs,ys = get_board_data(pgn,board,move,use_transformer)
-                                    x.append(xs)
-                                    y_true.append(ys)
-                                    total_pos+=1
-                            
+                            if len(x)==0:
+                                x.append(np.concatenate((last_x[:,:,12:(history+1)*12],xs),axis=-1))
                             else:
-                                xs,ys = get_board_data(pgn,board,move,use_transformer)
-                                x.append(xs)
-                                y_true.append(ys)
-                                total_pos+=1
+                                x.append(np.concatenate((x[-1][:,:,12:(history+1)*12],xs),axis=-1))
+                        y_true.append(ys)
+                        total_pos+=1
+                        
 
 
-                        if use_transformer:
-                            Transformer_board.append(Tboard)
-                            Transformer_mask.append(Tmask)
+def mirror_uci_string(uci_string):
+    """
+    Mirrors a uci string
+    """
+    if len(uci_string)<=4:
+        return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3]))
+    else:
+        return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3])) + uci_string[4]
 
 
 
 
-def get_board_data(pgn,board,move,use_transformer = True):
+def get_board_data(pgn,board,real_move):
     if board.turn == chess.WHITE:
         color = 1
         elo = pgn.headers["WhiteElo"]
+        mirrored_board = board.copy()
+        move = real_move
     else:
         color = 0
         elo = pgn.headers["BlackElo"]
+        mirrored_board = board.mirror()
+        mirror_uci = mirror_uci_string(real_move.uci())
+        move = chess.Move.from_uci(mirror_uci)
+
     try:
         elo = float(elo)
     except:
@@ -129,32 +131,31 @@ def get_board_data(pgn,board,move,use_transformer = True):
     elo = elo/3000
     color = np.ones((8,8,1),dtype=np.float32)*color
     elo = np.ones((8,8,1),dtype=np.float32)*elo
-    before = board_to_input_data(board)
+    before = board_to_input_data(mirrored_board)
 
 
     #add castling rights for white and black
     castling_rights = np.ones((8,8,4),dtype=np.float32)
-    if  not board.has_kingside_castling_rights(chess.WHITE):
+    if  not mirrored_board.has_kingside_castling_rights(chess.WHITE):
         castling_rights[:,:,0] = 0
-    if not board.has_queenside_castling_rights(chess.WHITE):
+    if not mirrored_board.has_queenside_castling_rights(chess.WHITE):
         castling_rights[:,:,1] = 0
-    if not board.has_kingside_castling_rights(chess.BLACK):
+    if not mirrored_board.has_kingside_castling_rights(chess.BLACK):
         castling_rights[:,:,2] = 0
-    if not board.has_queenside_castling_rights(chess.BLACK):
+    if not mirrored_board.has_queenside_castling_rights(chess.BLACK):
         castling_rights[:,:,3] = 0
 
     #add en passant rights
     en_passant_right = np.ones((8,8,1),dtype=np.float32)
-    if not board.has_pseudo_legal_en_passant():
+    if not mirrored_board.has_pseudo_legal_en_passant():
         en_passant_right *= 0    
 
     lm =  - np.ones(1858,dtype=np.float32)
-    for possible in board.legal_moves:
+    for possible in mirrored_board.legal_moves:
         possible_str = possible.uci()
         if possible_str[-1]!='n':
             lm[policy_index.index(possible_str)] = 0
-    if use_transformer:
-        Tboard,Tmask = board_to_transformer_input(board)
+
 
 
     #find the index of the move in policy_index
@@ -164,14 +165,13 @@ def get_board_data(pgn,board,move,use_transformer = True):
     one_hot_move = np.zeros(1858,dtype=np.float32)
     one_hot_move[move_id] = 1
 
-    board.push(move)
+    board.push(real_move)
+    mirrored_board.push(move)
 
     one_hot_move = one_hot_move + lm
 
-    if use_transformer:
-        return np.concatenate((before,color,elo),axis=2),one_hot_move,Tboard,Tmask
-    else:
-        return np.concatenate((before,color,elo),axis=2),one_hot_move
+
+    return np.concatenate((before,castling_rights,en_passant_right,color,elo),axis=2),one_hot_move
 
 
 
@@ -414,15 +414,18 @@ class data_gen():
         self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        self.gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
+        self.gen = generator_uniform(generate_batch(batch_size,pgn),batch_size)
+        self.out_channels = 103
         
     def get_batch(self):
         return next(self.gen)
     
-
+'''
 params = {
     'batch_size': 32,
     'path_pgn': 'human.pgn'
 }
 gen = data_gen(params)
-x,y = gen.get_batch()
+for _ in range(1000):
+    x,y = gen.get_batch()
+    print(x.shape)'''
