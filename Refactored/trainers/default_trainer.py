@@ -59,7 +59,7 @@ def train(gen, model, num_step):
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
     total_steps = 0
-    model.optimizer = optimizer
+    model.compile(optimizer = optimizer)
     for epoch in range(10000):
         timer = time.time()
         total_loss = 0
