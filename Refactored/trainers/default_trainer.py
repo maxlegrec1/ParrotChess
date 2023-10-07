@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-from chessparser import *
 from datetime import datetime
 import multiprocessing as mp
 import time
@@ -51,12 +50,14 @@ def trainer(params):
         return train(*args,**kwargs, lr_start=params['lr_start'])
     return aux
 
+
+
+
 def train(gen, model, num_step, lr_start):
 
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
     total_steps = 0
-    model.compile(optimizer = optimizer)
     for epoch in range(10000):
         timer = time.time()
         total_loss = 0
@@ -71,8 +72,6 @@ def train(gen, model, num_step, lr_start):
             batch = gen.get_batch()
             active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))*(1/ 10**(np.floor(epoch/100)))
             
-            #active_lr_float = lr_start
-            model.optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, model)
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)

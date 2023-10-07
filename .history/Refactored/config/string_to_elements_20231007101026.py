@@ -11,7 +11,6 @@ import trainers.default_trainer as default_trainer
 ########### DATA GEN
 
 import data_gen.default_gen as default_gen
-import data_gen.gen_castling as gen_castling
 
 def from_string_to_fun():
     
@@ -23,7 +22,5 @@ def from_string_to_fun():
         
         "default_trainer": default_trainer.trainer,
         
-        "human_generator": default_gen.data_gen,
-        
-        "castling_generator": gen_castling.data_gen,
+        "human_generator": default_gen.data_gen
     }

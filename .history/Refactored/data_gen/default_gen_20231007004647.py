@@ -398,6 +398,6 @@ class data_gen():
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
         self.gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
-        self.out_channels = 14
+        
     def get_batch(self):
         return next(self.gen)

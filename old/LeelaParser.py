@@ -125,12 +125,12 @@ if __name__ == "__main__":
             #tf.print(white_nums/tot)
             yield(x,y)
     #gen = make_gen(train_iter)
-    from Bureau.projects.ParrotChess.Refactored.chessparser import *
+    from Bureau.projects.ParrotChess.old.chessparser import *
     batch_size = 256
     pgn = "/home/antoine/Bureau/projects/ParrotChess/Refactored/human.pgn"
     gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
     from Resnet import *
-    from Create_Leela import create_leela
+    from Bureau.projects.ParrotChess.old.Create_Leela import create_leela
     generator = create_leela()
     #generator = only_transformer()
     generator.summary()

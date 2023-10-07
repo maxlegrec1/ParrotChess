@@ -20,6 +20,9 @@ for pos in legal_moves:
     mask[7+pos[0],7+pos[1]] = 1
 # the mask have been verified, you can imshow the mask to verify
 plt.imshow(mask,cmap='gray')
+
+plt.show()
+plt.imshow(rooks_move, cmap='gray')
 plt.show()
 extended_length= 7+8+7
 board = np.zeros(shape =(8,8))

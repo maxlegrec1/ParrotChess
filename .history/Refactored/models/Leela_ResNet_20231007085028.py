@@ -79,15 +79,15 @@ class ApplySqueezeExcitation(tf.keras.layers.Layer):
 
 
 
-def create_body(inputs,num_residuals=16, num_filters = 64):
+def create_body(inputs,num_residuals=16):
     flow = conv_block(inputs,
                         filter_size=3,
-                        output_channels=num_filters,
+                        output_channels=512,
                         name='input',
                         bn_scale=True)
     for i in range(num_residuals):
         flow = residual_block(flow,
-                                num_filters,
+                                512,
                                 name='residual_{}'.format(i + 1))
     return flow
 
@@ -106,44 +106,41 @@ def conv_block(inputs,
     return tf.keras.layers.Activation('relu')(
         batch_norm(conv, name=name + '/bn', scale=bn_scale))
 
+input = tf.keras.layers.Input(shape=(8,8,14))
+
+x = create_body(input,num_residuals=6)
+
+conv_pol = conv_block(x,
+                            filter_size=3,
+                            output_channels=64,
+                            name='policy1')
+conv_pol2 = tf.keras.layers.Conv2D(
+    80,
+    3,
+    use_bias=True,
+    padding='same',
+    kernel_initializer='glorot_normal',
+    kernel_regularizer=l2reg,
+    bias_regularizer=l2reg,
+    name='policy')(conv_pol)
+#h_fc1 = ApplyPolicyMap()(conv_pol2)
+h_fc1 = tf.reshape(conv_pol2, [-1, 80 * 8 * 8])
+mat = tf.constant(make_map())
+h_fc1=tf.matmul(h_fc1, tf.cast(mat, tf.float32))
+#h_fc1 = tf.keras.layers.Softmax()(h_fc1)
+
+class ApplyPolicyMap(tf.keras.layers.Layer):
+
+    def __init__(self, **kwargs):
+        super(ApplyPolicyMap, self).__init__(**kwargs)
+        self.fc1 = tf.constant(make_map())
+
+    def call(self, inputs):
+        h_conv_pol_flat = tf.reshape(inputs, [-1, 80 * 8 * 8])
+        return tf.matmul(h_conv_pol_flat,
+                         tf.cast(self.fc1, h_conv_pol_flat.dtype))
+    
+model = tf.keras.Model(inputs=input, outputs=h_fc1)
+
 def create_model(params):
-    nb_channels = params['num_channels']
-    num_filters = params['num_filters']
-    nb_residuals = params['num_residuals']
-    input = tf.keras.layers.Input(shape=(8,8,nb_channels))
-
-    x = create_body(input,num_residuals=nb_residuals, num_filters = num_filters )
-
-    conv_pol = conv_block(x,
-                                filter_size=3,
-                                output_channels=64,
-                                name='policy1')
-    conv_pol2 = tf.keras.layers.Conv2D(
-        80,
-        3,
-        use_bias=True,
-        padding='same',
-        kernel_initializer='glorot_normal',
-        kernel_regularizer=l2reg,
-        bias_regularizer=l2reg,
-        name='policy')(conv_pol)
-    #h_fc1 = ApplyPolicyMap()(conv_pol2)
-    h_fc1 = tf.reshape(conv_pol2, [-1, 80 * 8 * 8])
-    mat = tf.constant(make_map())
-    h_fc1=tf.matmul(h_fc1, tf.cast(mat, tf.float32))
-    #h_fc1 = tf.keras.layers.Softmax()(h_fc1)
-
-    class ApplyPolicyMap(tf.keras.layers.Layer):
-
-        def __init__(self, **kwargs):
-            super(ApplyPolicyMap, self).__init__(**kwargs)
-            self.fc1 = tf.constant(make_map())
-
-        def call(self, inputs):
-            h_conv_pol_flat = tf.reshape(inputs, [-1, 80 * 8 * 8])
-            return tf.matmul(h_conv_pol_flat,
-                            tf.cast(self.fc1, h_conv_pol_flat.dtype))
-        
-    model = tf.keras.Model(inputs=input, outputs=h_fc1)
-
     return model

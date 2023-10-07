@@ -11,7 +11,7 @@ def parameters() -> dict:
         
         "trainer" : "default_trainer",
         
-        "data_generator": "castling_generator",
+        "data_generator": "human_generator",
         
         
         

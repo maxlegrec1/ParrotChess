@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import numpy as np
-from models.policy_index import policy_index
+from Refactored.models.policy_index import policy_index
 
 columns = 'abcdefgh'
 rows = '12345678'

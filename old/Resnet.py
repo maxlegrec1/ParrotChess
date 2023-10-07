@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from Refactored.chessparser import *
+from Bureau.projects.ParrotChess.old.chessparser import *
 from datetime import datetime
 import multiprocessing as mp
 import time
@@ -103,7 +103,7 @@ optimizer = tf.keras.optimizers.SGD(
                     learning_rate=active_lr,
                     momentum=0.9,
                     nesterov=True)
-from Bureau.projects.ParrotChess.Refactored.chessparser import *
+from Bureau.projects.ParrotChess.old.chessparser import *
 #gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 

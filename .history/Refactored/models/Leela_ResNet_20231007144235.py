@@ -108,11 +108,11 @@ def conv_block(inputs,
 
 def create_model(params):
     nb_channels = params['num_channels']
-    num_filters = params['num_filters']
+    nb_filters = params['num_filters']
     nb_residuals = params['num_residuals']
     input = tf.keras.layers.Input(shape=(8,8,nb_channels))
 
-    x = create_body(input,num_residuals=nb_residuals, num_filters = num_filters )
+    x = create_body(input,num_residuals=nb_residuals, nb_filters = nb_filters )
 
     conv_pol = conv_block(x,
                                 filter_size=3,
