@@ -1,7 +1,7 @@
 
 
-from chunkparsefunc import parse_function
-from chunkparser import ChunkParser
+# from chunkparsefunc import parse_function
+# from chunkparser import ChunkParser
 import argparse
 import os
 import sys
@@ -81,12 +81,12 @@ def get_input_mode():
     else:
         raise ValueError("Unknown input mode format: {}".format(input_mode))
 
-train_chunks = get_latest_chunks("F:/Gigachad/TrainingData/Training/*/",
+"""train_chunks = get_latest_chunks("F:/Gigachad/TrainingData/Training/*/",
 int(26201*0.9), False, os.path.getmtime)
-
+"""
 
 if __name__ == "__main__":
-
+    """
     train_parser = ChunkParser(train_chunks,
                                 get_input_mode(),
                                 shuffle_size=524288,
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     train_dataset = train_dataset.map(parse_function)
     train_dataset = train_dataset.prefetch(4)
     train_iter = iter(train_dataset)
-
+"""
     def make_gen(generator):
         white_nums = 0
         tot = 0
@@ -125,11 +125,10 @@ if __name__ == "__main__":
             #tf.print(white_nums/tot)
             yield(x,y)
     #gen = make_gen(train_iter)
-    from chessparser import *
+    from Bureau.projects.ParrotChess.Refactored.chessparser import *
     batch_size = 256
+    pgn = "/home/antoine/Bureau/projects/ParrotChess/Refactored/human.pgn"
     gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
-
-    
     from Resnet import *
     from Create_Leela import create_leela
     generator = create_leela()

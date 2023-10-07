@@ -62,7 +62,7 @@ import itertools
 import multiprocessing as mp
 import numpy as np
 import random
-import shufflebuffer as sb
+import old.shufflebuffer as sb
 import struct
 import unittest
 import gzip

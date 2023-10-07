@@ -14,7 +14,7 @@ def residual(x,num_filter):
     x = tf.keras.layers.ReLU()(x)
     return x
 
-from create_transformer import Encoder
+from Bureau.projects.ParrotChess.Refactored.old.create_transformer import Encoder
 h = 12  # Number of self-attention heads
 d_k = 64  # Dimensionality of the linearly projected queries and keys
 d_v = 64  # Dimensionality of the linearly projected values

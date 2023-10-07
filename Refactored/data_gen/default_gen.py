@@ -392,3 +392,12 @@ def generator_uniform(generator,batch_size):
 
 
 
+class data_gen():
+    def __init__(self, params):
+        self.params = params
+        batch_size = params.get('batch_size')
+        pgn = params.get('path_pgn')
+        self.gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
+        
+    def get_batch(self):
+        return next(self.gen)

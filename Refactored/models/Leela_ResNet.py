@@ -1,5 +1,6 @@
 import tensorflow as tf
-import Bureau.projects.ParrotChess.Refactored.old.lc0_az_policy_map as lc0_az_policy_map
+
+from models.lc0_az_policy_map import make_map
 
 def residual_block(inputs, channels, name):
     conv1 = tf.keras.layers.Conv2D(channels,
@@ -124,7 +125,7 @@ conv_pol2 = tf.keras.layers.Conv2D(
     name='policy')(conv_pol)
 #h_fc1 = ApplyPolicyMap()(conv_pol2)
 h_fc1 = tf.reshape(conv_pol2, [-1, 80 * 8 * 8])
-mat = tf.constant(lc0_az_policy_map.make_map())
+mat = tf.constant(make_map())
 h_fc1=tf.matmul(h_fc1, tf.cast(mat, tf.float32))
 #h_fc1 = tf.keras.layers.Softmax()(h_fc1)
 
@@ -132,7 +133,7 @@ class ApplyPolicyMap(tf.keras.layers.Layer):
 
     def __init__(self, **kwargs):
         super(ApplyPolicyMap, self).__init__(**kwargs)
-        self.fc1 = tf.constant(lc0_az_policy_map.make_map())
+        self.fc1 = tf.constant(make_map())
 
     def call(self, inputs):
         h_conv_pol_flat = tf.reshape(inputs, [-1, 80 * 8 * 8])
@@ -141,5 +142,5 @@ class ApplyPolicyMap(tf.keras.layers.Layer):
     
 model = tf.keras.Model(inputs=input, outputs=h_fc1)
 
-def create_leela():
+def create_model(params):
     return model

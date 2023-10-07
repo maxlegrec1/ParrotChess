@@ -1,9 +1,10 @@
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from chessparser import *
+from Refactored.chessparser import *
 from datetime import datetime
 import multiprocessing as mp
+import time
 def residual(x,num_filter):
     skip= x
     x = tf.keras.layers.Conv2D(num_filter, (3, 3), padding='same')(x)
@@ -29,7 +30,7 @@ def residual(x,num_filter):
     x = tf.keras.layers.ReLU()(x)
     return x
 
-from create_transformer import Encoder
+from Bureau.projects.ParrotChess.Refactored.old.create_transformer import Encoder
 h = 12  # Number of self-attention heads
 d_k = 64  # Dimensionality of the linearly projected queries and keys
 d_v = 64  # Dimensionality of the linearly projected values
@@ -102,7 +103,7 @@ optimizer = tf.keras.optimizers.SGD(
                     learning_rate=active_lr,
                     momentum=0.9,
                     nesterov=True)
-from chessparser import *
+from Bureau.projects.ParrotChess.Refactored.chessparser import *
 #gen = generator_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 
@@ -148,11 +149,12 @@ def train(num_step, generator,gen):
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
     total_steps = 0
+
     for epoch in range(10000):
+        timer = time.time()
         total_loss = 0
         Legal_prob = 0
         accuracy = 0
-
         if epoch%40==0 and epoch!=0:
             #save weights
             generator.save_weights(f"generator_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{epoch}.h5")
@@ -160,7 +162,8 @@ def train(num_step, generator,gen):
 
         for step in range(num_step):
             batch = next(gen)
-            active_lr_float = lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps)
+            active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))*(1/ 10**(np.floor(epoch/100)))
+            
             #active_lr_float = lr_start
             optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, generator)
@@ -173,11 +176,11 @@ def train(num_step, generator,gen):
             total_steps += 1
             # Use carriage return to overwrite the current line
             print(
-                f"Step: {step}, Lr: {active_lr_float:.4f}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}"
+                f"Step: {step}, Lr: {active_lr_float:.4f}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
                 ,end="\r")
         # Write the results to the log file
         log_file.write(
-            f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f} \n"
+            f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}\n"
         )
         log_file.flush()
         print()  # Move to the next line after completing the epoch
