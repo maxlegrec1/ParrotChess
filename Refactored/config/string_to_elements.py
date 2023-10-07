@@ -20,7 +20,7 @@ def from_string_to_fun():
         
         "ResNet": model.create_model,
         
-        "default_trainer": default_trainer.train,
+        "default_trainer": default_trainer.trainer,
         
         "human_generator": default_gen.data_gen
     }
