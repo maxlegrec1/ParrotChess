@@ -8,12 +8,7 @@ batch_size = 32
 
 lr = 2e-2
 warmup_steps = 2000
-lr_start = 1e-5
-active_lr = tf.Variable(lr_start, dtype=tf.float32,trainable=False)
-optimizer = tf.keras.optimizers.SGD(
-                    learning_rate=active_lr,
-                    momentum=0.9,
-                    nesterov=True)
+
 #gen = model_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 
@@ -51,15 +46,16 @@ def train_step(batch,model):
         return loss,lm,acc
 
 
+def trainer(params):
+    def aux(*args, **kwargs):
+        return train(*args,**kwargs, lr_start=params['lr_start'])
+    return aux
 
-
-
-def train(gen, model, num_step):
+def train(gen, model, num_step, lr_start):
 
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
     total_steps = 0
-    model.optimizer = optimizer
     for epoch in range(10000):
         timer = time.time()
         total_loss = 0
@@ -75,7 +71,7 @@ def train(gen, model, num_step):
             active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))*(1/ 10**(np.floor(epoch/100)))
             
             #active_lr_float = lr_start
-            optimizer.lr.assign(active_lr_float)
+            model.optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, model)
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)
