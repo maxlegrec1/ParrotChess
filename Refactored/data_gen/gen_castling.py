@@ -439,7 +439,7 @@ def generator_uniform(generator,batch_size):
         for i in range(batch_size):
             for j in range(batch_size):
                 x,y= n_batches[j]
-                xs.append(x[i])
+                xs.append([x[i][:-1],x[i][-1]])
                 ys.append(y[i])
             xs = np.array(xs)
             ys = np.array(ys)
