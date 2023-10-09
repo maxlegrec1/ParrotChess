@@ -3,11 +3,8 @@ import numpy as np
 from datetime import datetime
 import multiprocessing as mp
 import time
+import csv
 batch_size = 32
-
-lr = 2e-2
-warmup_steps = 2000
-
 #gen = model_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 
@@ -47,16 +44,18 @@ def train_step(batch,model):
 
 def trainer(params):
     def aux(*args, **kwargs):
-        return train(*args,**kwargs, lr_start=params['lr_start'])
+        return train(*args,**kwargs, lr_start=params['lr_start'], lr = params['lr'])
     return aux
 
 
 
 
-def train(gen, model, num_step, lr_start):
+def train(gen, model, num_step, lr_start ,lr, warmup_steps):
 
     #create a log file where we will store the results. It shall be named after the current date and time
-    log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt", "w")
+    log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv", "w")
+    names_to_save = [epoch, total_loss, accuracy, Legal_prob]
+    csv_file = csv.DictWriter(log_file, fieldnames=names_to_save)
     total_steps = 0
     for epoch in range(10000):
         timer = time.time()
@@ -70,8 +69,8 @@ def train(gen, model, num_step, lr_start):
 
         for step in range(num_step):
             batch = gen.get_batch()
-            active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))*(1/ 10**(np.floor(epoch/100)))
-            
+            active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps)) *(1/ 10**(np.floor(epoch/100)))
+            model.optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, model)
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)
@@ -82,9 +81,10 @@ def train(gen, model, num_step, lr_start):
             total_steps += 1
             # Use carriage return to overwrite the current line
             print(
-                f"Step: {step}, Lr: {active_lr_float:.4f}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
+                f"Step: {step}, Lr: {(active_lr_float / 10** np.floor(np.log10(active_lr_float))):.1f} 10^{int(np.floor(np.log10(active_lr_float)))}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
                 ,end="\r")
         # Write the results to the log file
+        csv_file.writerows([epoch, total_loss, accuracy, Legal_prob])
         log_file.write(
             f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}\n"
         )

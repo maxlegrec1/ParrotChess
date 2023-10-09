@@ -110,16 +110,13 @@ def mirror_uci_string(uci_string):
 
 
 
-
-def get_board_data(pgn,board,real_move):
+def get_board(elo,board,real_move):
     if board.turn == chess.WHITE:
         color = 1
-        elo = pgn.headers["WhiteElo"]
         mirrored_board = board.copy()
         move = real_move
     else:
         color = 0
-        elo = pgn.headers["BlackElo"]
         mirrored_board = board.mirror()
         mirror_uci = mirror_uci_string(real_move.uci())
         move = chess.Move.from_uci(mirror_uci)
@@ -172,8 +169,51 @@ def get_board_data(pgn,board,real_move):
 
 
     return np.concatenate((before,castling_rights,en_passant_right,color,elo),axis=2),one_hot_move
+    
+def get_board_data(pgn,board,real_move):
+    if board.turn == chess.WHITE:
+        elo = pgn.headers["WhiteElo"]
+    else:
+        elo = pgn.headers["BlackElo"]
+    return get_board(elo,board,real_move)
+
+def get_x_from_board(elo,board):
+    print(board.turn == chess.WHITE)
+    if board.turn == chess.WHITE:
+        color = 1
+        mirrored_board = board.copy()
+    else:
+        color = 0
+        print("yes")
+        mirrored_board = board.mirror()
+
+    try:
+        elo = float(elo)
+    except:
+        elo = 1500
+    elo = elo/3000
+    color = np.ones((8,8,1),dtype=np.float32)*color
+    elo = np.ones((8,8,1),dtype=np.float32)*elo
+    before = board_to_input_data(mirrored_board)
 
 
+    #add castling rights for white and black
+    castling_rights = np.ones((8,8,4),dtype=np.float32)
+    if  not mirrored_board.has_kingside_castling_rights(chess.WHITE):
+        castling_rights[:,:,0] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.WHITE):
+        castling_rights[:,:,1] = 0
+    if not mirrored_board.has_kingside_castling_rights(chess.BLACK):
+        castling_rights[:,:,2] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.BLACK):
+        castling_rights[:,:,3] = 0
+
+    #add en passant rights
+    en_passant_right = np.ones((8,8,1),dtype=np.float32)
+    if not mirrored_board.has_pseudo_legal_en_passant():
+        en_passant_right *= 0    
+
+    return np.concatenate((before,castling_rights,en_passant_right,color,elo),axis=2)
 
 policy_index = [
     "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a1a2", "a1b2",
