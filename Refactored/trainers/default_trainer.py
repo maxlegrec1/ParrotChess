@@ -54,8 +54,9 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
 
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv", "w")
-    names_to_save = [epoch, total_loss, accuracy, Legal_prob]
-    csv_file = csv.DictWriter(log_file, fieldnames=names_to_save)
+    names_to_save = ['epoch', 'total_loss', 'accuracy', 'Legal_prob']
+    writer = csv.DictWriter(log_file, fieldnames=names_to_save)
+    writer.writeheader()
     total_steps = 0
     for epoch in range(10000):
         timer = time.time()
@@ -84,11 +85,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
                 f"Step: {step}, Lr: {(active_lr_float / 10** np.floor(np.log10(active_lr_float))):.1f} 10^{int(np.floor(np.log10(active_lr_float)))}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
                 ,end="\r")
         # Write the results to the log file
-        csv_file.writerows([epoch, total_loss, accuracy, Legal_prob])
-        log_file.write(
-            f"Epoch: {epoch + 1}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}\n"
-        )
-        log_file.flush()
+        writer.writerow({"epoch": epoch, "total_loss" : float(total_loss), "accuracy" : float(accuracy), "Legal_prob" : float(Legal_prob)})
         print()  # Move to the next line after completing the epoch
         
 

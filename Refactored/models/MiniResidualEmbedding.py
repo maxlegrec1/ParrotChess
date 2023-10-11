@@ -32,7 +32,7 @@ def residual_block(inputs, channels, name):
 
 
 def residual_model( channels, name):
-    inputs = tf.keras.layers.Input(shape=(8,8,channels+1))
+    inputs = tf.keras.layers.Input(shape=(8,8,channels))
     conv1 = tf.keras.layers.Conv2D(channels,
                                     3,
                                     use_bias=False,
@@ -57,8 +57,18 @@ def residual_model( channels, name):
                                                     scale=True),
                                     channels,
                                     name=name + '/se')
-    output = tf.keras.layers.Activation('relu')(
+    out3 = tf.keras.layers.Activation('relu')(
         tf.keras.layers.add([inputs, out2]))
+    conv3 = tf.keras.layers.Conv2D(channels-1,
+                                3,
+                                use_bias=False,
+                                padding='same',
+                                kernel_initializer='glorot_normal',
+                                kernel_regularizer=l2reg,
+                                
+                                name=name + '/3/conv2d')(out3)
+    output = tf.keras.layers.Activation('relu')(
+    batch_norm(conv3, name + '/3/bn', scale=False))
     return tf.keras.Model(inputs=inputs, outputs=output)
 
 def batch_norm(input, name, scale=False):
@@ -120,8 +130,8 @@ def create_body(inputs,num_residuals=16, num_filters = 64,mini_res_channels = 64
         flow = residual_block(flow,
                                 num_filters,
                                 name='residual_{}'.format(i + 1))
-        main,mini_res_input = flow[:,:,mini_res_channels:],flow[:,:,:mini_res_channels]
-        mini_res_output = mini_residual([mini_res_input,inputs[1]])
+        main,mini_res_input = flow[:,:,:,mini_res_channels-1:],flow[:,:,:,:mini_res_channels-1]
+        mini_res_output = mini_residual(tf.concat([mini_res_input,inputs[1]],axis = -1))
         flow = tf.keras.layers.concatenate([main,mini_res_output],axis=-1)
     return flow
 
@@ -144,9 +154,10 @@ def create_model(params):
     nb_channels = params['num_channels']
     num_filters = params['num_filters']
     nb_residuals = params['num_residuals']
-    input = tf.keras.layers.Input(shape=(8,8,nb_channels))
-
-    x = create_body(input,num_residuals=nb_residuals, num_filters = num_filters )
+    mini_res_channels= params['mini_res_channels']
+    input1 = tf.keras.layers.Input(shape=(8,8,nb_channels))
+    input2 = tf.keras.layers.Input(shape=(8,8,1))
+    x = create_body([input1,input2],num_residuals=nb_residuals, num_filters = num_filters, mini_res_channels = mini_res_channels )
 
     conv_pol = conv_block(x,
                                 filter_size=3,
@@ -178,6 +189,6 @@ def create_model(params):
             return tf.matmul(h_conv_pol_flat,
                             tf.cast(self.fc1, h_conv_pol_flat.dtype))
         
-    model = tf.keras.Model(inputs=input, outputs=h_fc1)
+    model = tf.keras.Model(inputs=[input1,input2], outputs=h_fc1)
 
     return model

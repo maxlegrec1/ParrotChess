@@ -2,7 +2,7 @@
 
 ########### MODELS
 import models.Leela_ResNet as model
-
+import models.MiniResidualEmbedding as MiniResidual
 
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
@@ -20,6 +20,8 @@ def from_string_to_fun():
         
         
         "ResNet": model.create_model,
+        
+        "MiniResidual": MiniResidual.create_model,
         
         "default_trainer": default_trainer.trainer,
         

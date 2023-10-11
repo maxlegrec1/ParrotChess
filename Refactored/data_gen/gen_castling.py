@@ -434,18 +434,22 @@ def generator_uniform(generator,batch_size):
         for i in range(batch_size):
             n_batches[i] = next(generator)
         
-        xs=[]
-        ys=[]
+        Xs = []
+        Es = []
+        Ys=[]
         for i in range(batch_size):
             for j in range(batch_size):
                 x,y= n_batches[j]
-                xs.append([x[i][:-1],x[i][-1]])
-                ys.append(y[i])
-            xs = np.array(xs)
-            ys = np.array(ys)
-            yield np.array(xs),np.array(ys)
-            xs=[]
-            ys=[]
+                Xs.append(x[i][:,:,:-1])
+                Es.append(x[i][:,:,-1])
+                Ys.append(y[i])
+            Xs = np.array(Xs)
+            Ys = np.array(Ys)
+            Es = np.array(Es)
+            yield [Xs,Es],np.array(Ys)
+            Xs=[]
+            Ys=[]
+            Es=[]
 
 
 
@@ -455,7 +459,7 @@ class data_gen():
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
         self.gen = generator_uniform(generate_batch(batch_size,pgn),batch_size)
-        self.out_channels = 103
+        self.out_channels = 102
         
     def get_batch(self):
         return next(self.gen)
