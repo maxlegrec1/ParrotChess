@@ -68,19 +68,20 @@ def generate_batch(batch_size,in_pgn):
             if pgn.next()!=None:
                 moves = [move for move in pgn.mainline_moves()]
                 #print(int(pgn.headers["WhiteElo"]))
-                if len(moves)>=10 and random.random() < uniform_density()/(4*weibull_min.pdf(int(pgn.headers["WhiteElo"]),3.781083215802374, 355.0827163803461, 1421.9764397854142)):
-                    #make the 10 first moves 
+                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(int(pgn.headers["WhiteElo"]),3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                    start_index = random.randint(10,len(moves)-1)
+                    #make the start_index first moves 
                     board = chess.Board()
                     x_start = []
-                    for move in moves[:10]:
+                    for move in moves[:start_index]:
                         #board.push(move)
                         xs,ys = get_board_data(pgn,board,move)
                         x_start.append(xs)
                     #x_start = np.array(x_start,dtype=np.float32)
-                    x_start = x_start[10-(history):]
+                    x_start = x_start[start_index-(history):]
                     x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
                     #print(x_start.shape)
-                    for i,move in enumerate(moves[10:]):
+                    for i,move in enumerate(moves[start_index:]):
                         #print(total_pos)
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
