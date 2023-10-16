@@ -5,8 +5,16 @@ import numpy as np
 from typing import Tuple, List
 import tensorflow as tf
 from tqdm import tqdm
+from scipy.stats import weibull_min
+import random
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
+params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
+
+def uniform_density(elo_min = 500, elo_max = 3000):
+    return 1/(elo_max - elo_min)
+
+
 
 
 def board_to_transformer_input(board: chess.Board) -> np.ndarray:
@@ -59,7 +67,8 @@ def generate_batch(batch_size,in_pgn):
             pgn = chess.pgn.read_game(f)
             if pgn.next()!=None:
                 moves = [move for move in pgn.mainline_moves()]
-                if len(moves)>=10:
+                #print(int(pgn.headers["WhiteElo"]))
+                if len(moves)>=10 and random.random() < uniform_density()/(4*weibull_min.pdf(int(pgn.headers["WhiteElo"]),3.781083215802374, 355.0827163803461, 1421.9764397854142)):
                     #make the 10 first moves 
                     board = chess.Board()
                     x_start = []
@@ -467,7 +476,7 @@ class data_gen():
 
 params = {
     'batch_size': 32,
-    'path_pgn': 'human.pgn'
+    'path_pgn': 'human2.pgn'
 }
 gen = data_gen(params)
 for _ in range(1000):
