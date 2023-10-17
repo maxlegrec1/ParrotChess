@@ -73,15 +73,22 @@ def generate_batch(batch_size,in_pgn):
                     #make the start_index first moves 
                     board = chess.Board()
                     x_start = []
+                    stop = False
                     for move in moves[:start_index]:
                         #board.push(move)
+                        if move.uci()[-1]=='n':
+                            stop = True
+                            break
                         xs,ys = get_board_data(pgn,board,move)
                         x_start.append(xs)
                     #x_start = np.array(x_start,dtype=np.float32)
-                    x_start = x_start[start_index-(history):]
-                    x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
+                    if not stop:
+                        x_start = x_start[start_index-(history):]
+                        x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
                     #print(x_start.shape)
                     for i,move in enumerate(moves[start_index:]):
+                        if stop:
+                            break
                         #print(total_pos)
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
@@ -474,12 +481,12 @@ class data_gen():
     def get_batch(self):
         return next(self.gen)
     
-
-params = {
-    'batch_size': 32,
-    'path_pgn': 'human2.pgn'
-}
-gen = data_gen(params)
-for _ in range(1000):
-    x,y = gen.get_batch()
-    print(x[0].shape,x[1].shape)
+def test():
+    params = {
+        'batch_size': 32,
+        'path_pgn': 'human2.pgn'
+    }
+    gen = data_gen(params)
+    for _ in range(1000):
+        x,y = gen.get_batch()
+        print("geto", x[0].shape,x[1].shape)

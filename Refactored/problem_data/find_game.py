@@ -180,9 +180,71 @@ def old_main():
     for index,elt in enumerate(L):
         print('we are at month', index+1)
         keep_pgn_problem(elt, dico)  
+
+
+
+def create_pgn_problem(list_MY, dico):
+    
+    prefix  = '/home/antoine/Bureau/projects/ParrotChess/Refactored/problem_data/lichess_db_standard_rated_'
+    suffix = '.pgn'
+    list_input = [(elt[1], elt[0],prefix + elt[0] + '-' + elt[1] + suffix,  dico) for elt in list_MY]
+    def aux(month,year, path_file_pgn, dico):
+        if month=="10":
+            print('bah go le 10 en fait')
+        pgn_problem = open("Refactored/problem_data/problem_" + year + '-' + month + ".pgn", "a")
+        info_problem = open("Refactored/problem_data/info_problem_" + year + '-' + month + ".pgn", "a")
+        i = 0
+        m=0
+        with open(path_file_pgn, 'r') as f:
+            while True:
+                if m*10000< i:
+                    print(m*10000)
+                    m+=1
+                pgn = chess.pgn.read_game(f)
+                if pgn is None:
+                    print('done')
+                    print(i)
+                    break
+                if pgn.next() is not None:
+                    id_pgn = pgn.headers['Site'].split('/')[-1]
+                    assert len(id_pgn) == 8, f'Invalid parse id {i}'
+                    
+                    if id_pgn in dico:
+                        pgn_problem.write(str(pgn) + "\n\n")
+                        info_problem.write(dico[id_pgn][0]+  "/" + id_pgn + "/" + dico[id_pgn][1] + "\n")
+                i+=1
+            f.close()
+        pgn_problem.close()
+        info_problem.close()
+    processes = []
+    for input in list_input:
+        processes.append(Process(target=aux, args=input))
         
+    
+    for process in processes:
+        process.start()
+        
+        
+        
+def merge_file(path_file_receiver, path_file_to_move):
+    f_receiver = open(path_file_receiver, 'a')
+    f_to_move = open(path_file_to_move, "r")
+    f_receiver.write(f_to_move.read())
+
+def add_file(year, month):
+    path_file_receiver_pb = "Refactored/problem_data/problem.pgn"
+    path_file_receiver_info = "Refactored/problem_data/info_problem.pgn"
+    path_file_to_move_info = "Refactored/problem_data/info_problem_" + year + '-' + month + ".pgn"
+    path_file_to_move_pb= "Refactored/problem_data/problem_" + year + '-' + month + ".pgn"
+    merge_file(path_file_receiver_pb, path_file_to_move_pb)
+    merge_file(path_file_receiver_info, path_file_to_move_info)
+def add_year(year):
+    months = [ '0'+ str(i) for i in range(1,10)] + ['10', '11', '12']
+    for month in months:
+        print('we are in', month, ' of year ',year)
+        add_file(year,month)
 if __name__ == '__main__':
     dico = create_dict()
-    create_pgn_problem_year("2016", dico)
-    print('end of 2016 parsing')
-    create_pgn_problem_year("2017", dico)
+    list_MY = [("2020","04"), ("2020","05"), ("2020","06"), ("2020","07"), ("2020","08")]
+    create_pgn_problem(list_MY, dico)
+    # add_year("2019")

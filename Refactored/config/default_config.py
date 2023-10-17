@@ -6,13 +6,13 @@ def parameters() -> dict:
         
         "shared_parameters" : {"batch_size" : 256, 'lr_start': 1e-4, 'lr':1e-4, 'num_filters': 512, 'num_residuals': 12, 
                                "mini_res_channels" : 64,
-                               "path_pgn": "human.pgn"},
+                               "path_pgn": "human2.pgn"},
         
         "model" : 'MiniResidual',
         
         "trainer" : "default_trainer",
         
-        "data_generator": "castling_generator",
+        "data_generator": "uniform_generator",
         
         
         

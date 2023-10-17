@@ -464,12 +464,12 @@ class data_gen():
     def get_batch(self):
         return next(self.gen)
     
-
-params = {
-    'batch_size': 32,
-    'path_pgn': 'human.pgn'
-}
-gen = data_gen(params)
-for _ in range(1000):
-    x,y = gen.get_batch()
-    print(x[0].shape,x[1].shape)
+def test_cas():
+    params = {
+        'batch_size': 32,
+        'path_pgn': 'human.pgn'
+    }
+    gen = data_gen(params)
+    for _ in range(1000):
+        x,y = gen.get_batch()
+        print(x[0].shape,x[1].shape)
