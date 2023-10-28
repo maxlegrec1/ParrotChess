@@ -1,3 +1,247 @@
+
+import chess.pgn
+import chess
+import numpy as np
+from typing import Tuple, List
+import tensorflow as tf
+from tqdm import tqdm
+from scipy.stats import weibull_min
+import random
+
+dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
+params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
+
+def uniform_density(elo_min = 500, elo_max = 3000):
+    return 1/(elo_max - elo_min)
+
+
+
+
+def board_to_transformer_input(board: chess.Board) -> np.ndarray:
+
+    if board.turn == chess.WHITE:
+        color = 1
+    else:
+        color = 0
+
+    bitboard = np.zeros(33,dtype=np.int64)
+    bitboard[0] = 12*64 + color
+    mask = np.zeros((33,33),dtype=np.int64)
+    for i,piece in enumerate(board.piece_map()):
+        #print(piece,board.piece_at(piece).symbol())
+        bitboard[i+1] = piece+dic_piece[board.piece_at(piece).symbol()]*64
+    mask_length = np.sum(np.where(bitboard!=0,1,0))
+    mask[:mask_length,:mask_length] = 1
+    return bitboard,mask
+
+
+
+def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
+    piece_types = [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]
+    piece_colors = [chess.WHITE, chess.BLACK]
+
+    input_data = []
+
+    for color in piece_colors:
+        for piece_type in piece_types:
+            # Create a binary mask for the specified piece type and color
+            mask = np.zeros((8, 8),dtype=np.float32)
+            for square in board.pieces(piece_type, color):
+                mask[chess.square_rank(square)][chess.square_file(square)] = 1
+            input_data.append(mask)
+    input_data = np.transpose(input_data,(1,2,0))
+
+    
+
+    return np.array(input_data,dtype=np.float32)
+
+
+def generate_batch(batch_size,in_pgn):
+    total_pos = 0
+    x = []
+    y_true = []
+    fens = []
+    history = 7
+    with open(in_pgn) as f:
+        while True:
+            #load game
+            pgn = chess.pgn.read_game(f)
+            if pgn.next()!=None:
+                moves = [move for move in pgn.mainline_moves()]
+                #print(int(pgn.headers["WhiteElo"]))
+                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(int(pgn.headers["WhiteElo"]),3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                    start_index = random.randint(10,len(moves)-1)
+                    #make the start_index first moves 
+                    board = chess.Board()
+                    x_start = []
+                    stop = False
+                    for move in moves[:start_index]:
+                        #board.push(move)
+                        if move.uci()[-1]=='n':
+                            stop = True
+                            break
+                        xs,ys = get_board_data(pgn,board,move)
+                        x_start.append(xs)
+                    #x_start = np.array(x_start,dtype=np.float32)
+                    if not stop:
+                        x_start = x_start[start_index-(history):]
+                        x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
+                    #print(x_start.shape)
+                    for i,move in enumerate(moves[start_index:]):
+                        if stop:
+                            break
+                        #print(total_pos)
+                        if total_pos%batch_size==0 and len(x)!=0:
+                            x = np.array(x,dtype=np.float32)
+                            y_true = np.array(y_true,dtype=np.float32)
+                            yield (x,y_true,fens)
+
+
+                            #reset variables
+                            last_x = x[-1]
+                            x = []
+                            y_true = []
+                            fens = []
+
+                        if move.uci()[-1]=='n':
+                            break
+                        fens.append(board.fen())
+                        xs,ys = get_board_data(pgn,board,move)
+                        if i == 0 :
+                            x.append(np.concatenate((x_start,xs),axis=-1))
+                        else:
+                            if len(x)==0:
+                                x.append(np.concatenate((last_x[:,:,12:(history+1)*12],xs),axis=-1))
+                            else:
+                                x.append(np.concatenate((x[-1][:,:,12:(history+1)*12],xs),axis=-1))
+                        y_true.append(ys)
+                        total_pos+=1
+                        
+
+
+def mirror_uci_string(uci_string):
+    """
+    Mirrors a uci string
+    """
+    if len(uci_string)<=4:
+        return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3]))
+    else:
+        return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3])) + uci_string[4]
+
+
+
+def get_board(elo,board,real_move,TC):
+    if board.turn == chess.WHITE:
+        color = 1
+        mirrored_board = board.copy()
+        move = real_move
+    else:
+        color = 0
+        mirrored_board = board.mirror()
+        mirror_uci = mirror_uci_string(real_move.uci())
+        move = chess.Move.from_uci(mirror_uci)
+
+    try:
+        elo = float(elo)
+    except:
+        elo = 1500
+    elo = elo/3000
+
+    TC = float(TC.split('+')[0])
+
+    TC = TC / 120
+
+    color = np.ones((8,8,1),dtype=np.float32)*color
+    elo = np.ones((8,8,1),dtype=np.float32)*elo
+    TC = np.ones((8,8,1),dtype=np.float32)*TC
+    before = board_to_input_data(mirrored_board)
+
+    #add castling rights for white and black
+    castling_rights = np.ones((8,8,4),dtype=np.float32)
+    if  not mirrored_board.has_kingside_castling_rights(chess.WHITE):
+        castling_rights[:,:,0] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.WHITE):
+        castling_rights[:,:,1] = 0
+    if not mirrored_board.has_kingside_castling_rights(chess.BLACK):
+        castling_rights[:,:,2] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.BLACK):
+        castling_rights[:,:,3] = 0
+
+    #add en passant rights
+    en_passant_right = np.ones((8,8,1),dtype=np.float32)
+    if not mirrored_board.has_pseudo_legal_en_passant():
+        en_passant_right *= 0    
+
+    lm =  - np.ones(1858,dtype=np.float32)
+    for possible in mirrored_board.legal_moves:
+        possible_str = possible.uci()
+        if possible_str[-1]!='n':
+            lm[policy_index.index(possible_str)] = 0
+
+
+
+    #find the index of the move in policy_index
+
+    move_id = policy_index.index(move.uci())
+
+    one_hot_move = np.zeros(1858,dtype=np.float32)
+    one_hot_move[move_id] = 1
+
+    board.push(real_move)
+    mirrored_board.push(move)
+
+    one_hot_move = one_hot_move + lm
+
+
+    return np.concatenate((before,castling_rights,en_passant_right,color,TC,elo),axis=2),one_hot_move
+    
+def get_board_data(pgn,board,real_move):
+    if board.turn == chess.WHITE:
+        elo = pgn.headers["WhiteElo"]
+    else:
+        elo = pgn.headers["BlackElo"]
+    TC = pgn.headers['TimeControl']
+    #print(TC)
+    return get_board(elo,board,real_move,TC)
+
+def get_x_from_board(elo,board):
+    print(board.turn == chess.WHITE)
+    if board.turn == chess.WHITE:
+        color = 1
+        mirrored_board = board.copy()
+    else:
+        color = 0
+        print("yes")
+        mirrored_board = board.mirror()
+
+    try:
+        elo = float(elo)
+    except:
+        elo = 1500
+    elo = elo/3000
+    color = np.ones((8,8,1),dtype=np.float32)*color
+    elo = np.ones((8,8,1),dtype=np.float32)*elo
+    before = board_to_input_data(mirrored_board)
+
+
+    #add castling rights for white and black
+    castling_rights = np.ones((8,8,4),dtype=np.float32)
+    if  not mirrored_board.has_kingside_castling_rights(chess.WHITE):
+        castling_rights[:,:,0] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.WHITE):
+        castling_rights[:,:,1] = 0
+    if not mirrored_board.has_kingside_castling_rights(chess.BLACK):
+        castling_rights[:,:,2] = 0
+    if not mirrored_board.has_queenside_castling_rights(chess.BLACK):
+        castling_rights[:,:,3] = 0
+
+    #add en passant rights
+    en_passant_right = np.ones((8,8,1),dtype=np.float32)
+    if not mirrored_board.has_pseudo_legal_en_passant():
+        en_passant_right *= 0    
+
+    return np.concatenate((before,castling_rights,en_passant_right,color,elo),axis=2)
+
 policy_index = [
     "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a1a2", "a1b2",
     "a1c2", "a1a3", "a1b3", "a1c3", "a1a4", "a1d4", "a1a5", "a1e5", "a1a6",
@@ -209,3 +453,56 @@ policy_index = [
     "h7h8q", "h7h8r", "h7h8b"
 ]
 
+
+
+def generator_uniform(generator,batch_size):
+    while True:
+        n_batches = [0]*batch_size
+        for i in range(batch_size):
+            n_batches[i] = next(generator)
+        
+        Xs = []
+        Es = []
+        Fs = []
+        played_moves = np.zeros((batch_size,1858))
+        played_values = np.zeros((batch_size,8,8,4))
+        Ys=[]
+        for i in range(batch_size):
+            for j in range(batch_size):
+                x,y,f = n_batches[j]
+                Xs.append(x[i][:,:,:-2])
+                Es.append(x[i][:,:,-2:])
+                Ys.append(y[i])
+                Fs.append(f[i])
+            Xs = np.array(Xs)
+            Ys = np.array(Ys)
+            Es = np.array(Es)
+            yield [Xs,Es,played_moves,played_values],np.array(Ys),Fs
+            Xs=[]
+            Ys=[]
+            Es=[]
+            Fs=[]
+
+
+
+class data_gen():
+    def __init__(self, params):
+        self.params = params
+        batch_size = params.get('batch_size')
+        pgn = params.get('path_pgn')
+        self.gen = generator_uniform(generate_batch(batch_size,pgn),batch_size)
+        self.out_channels = 102
+        
+    def get_batch(self):
+        return next(self.gen)
+    
+def test():
+    params = {
+        'batch_size': 32,
+        'path_pgn': 'human2.pgn'
+    }
+    gen = data_gen(params)
+    for _ in range(1000):
+        x,y,fens = gen.get_batch()
+        print("geto", x[0].shape,x[1].shape,x[2].shape,x[3].shape)
+test()
