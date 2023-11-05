@@ -146,7 +146,7 @@ def get_board(elo,board,real_move,TC):
     except:
         elo = 1500
     elo = elo/3000
-
+    print(TC)
     TC = float(TC.split('+')[0])
 
     TC = TC / 120
@@ -505,4 +505,3 @@ def test():
     for _ in range(1000):
         x,y,fens = gen.get_batch()
         print("geto", x[0].shape,x[1].shape,x[2].shape,x[3].shape)
-test()

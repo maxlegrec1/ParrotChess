@@ -54,6 +54,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
 
     #create a log file where we will store the results. It shall be named after the current date and time
     log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv", "w")
+    summary = tf.summary.create_file_writer(f"tensorboard/logdir_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
     names_to_save = ['epoch', 'total_loss', 'accuracy', 'Legal_prob']
     writer = csv.DictWriter(log_file, fieldnames=names_to_save)
     writer.writeheader()
@@ -79,11 +80,17 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
             Legal_prob = Legal_prob / (step + 1) * step + lm / (step + 1)
 
             accuracy = accuracy / (step + 1) * step + acc / (step + 1)
+            with summary.as_default():
+                  tf.summary.scalar('loss', total_loss, step=step + 1000*epoch)
+                  tf.summary.scalar('learning rate', active_lr_float / 10** np.floor(np.log10(active_lr_float)), step=step + 1000*epoch)
+                  tf.summary.scalar('accuracy', accuracy, step=step + + 1000*epoch)
+                  tf.summary.scalar('Legal_prob', Legal_prob, step=step + 1000*epoch)
             total_steps += 1
             # Use carriage return to overwrite the current line
             print(
                 f"Step: {step}, Lr: {(active_lr_float / 10** np.floor(np.log10(active_lr_float))):.1f} 10^{int(np.floor(np.log10(active_lr_float)))}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
                 ,end="\r")
+            # summary.flush()
         # Write the results to the log file
         writer.writerow({"epoch": epoch, "total_loss" : float(total_loss), "accuracy" : float(accuracy), "Legal_prob" : float(Legal_prob)})
         print()  # Move to the next line after completing the epoch

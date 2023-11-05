@@ -59,7 +59,7 @@ def residual_model( channels, name):
                                     name=name + '/se')
     out3 = tf.keras.layers.Activation('relu')(
         tf.keras.layers.add([inputs, out2]))
-    conv3 = tf.keras.layers.Conv2D(channels-1,
+    conv3 = tf.keras.layers.Conv2D(channels-2,
                                 3,
                                 use_bias=False,
                                 padding='same',

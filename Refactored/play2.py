@@ -314,7 +314,7 @@ def play(model,game_moves,elo):
     
     return predict(board,model,[X_final_no_elo, elo])
 
-model_weights = "/home/antoine/Bureau/projects/ParrotChess/model_2023-10-18_19-36-03_320.h5"
+model_weights = "/home/antoine/Bureau/projects/Parrot/ParrotChess/model_2023-10-18_19-36-03_320.h5"
 config_name = 'default_config'
 
 if __name__ == '__main__':
