@@ -18,18 +18,23 @@ def main():
     data_generator = converter[params['data_generator']](arguments)
     arguments['num_channels'] = data_generator.out_channels
     model = converter[params['model']](arguments)
-    evaluater = create_evaluater()
+    evaluater = create_model()
     trainer = converter[params['trainer']](arguments)
     lr_start =  arguments['lr_start']
     
     active_lr = tf.Variable(lr_start, dtype=tf.float32,trainable=False)
-    optimizer = tf.keras.optimizers.SGD(
+    optimizer_model = tf.keras.optimizers.SGD(
                     learning_rate=active_lr,
                     momentum=0.9,
                     nesterov=True)
-    model.compile(optimizer = optimizer)
-    evaluater.compile(optimizer = optimizer)
+    optimizer_evaluater = tf.keras.optimizers.SGD(
+                learning_rate=active_lr,
+                momentum=0.9,
+                nesterov=True)
+    model.compile(optimizer = optimizer_model)
+    evaluater.compile(optimizer = optimizer_evaluater)
     model.summary()
+    evaluater.summary()
     trainer(data_generator, model, evaluater, **training_args)
     
 if __name__ == '__main__':

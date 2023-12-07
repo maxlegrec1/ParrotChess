@@ -106,10 +106,10 @@ def conv_block(inputs,
     return tf.keras.layers.Activation('relu')(
         batch_norm(conv, name=name + '/bn', scale=bn_scale))
 
-def create_model(params):
-    nb_channels = 16
-    num_filters = 64
-    nb_residuals = 6
+def create_model():
+    nb_channels = 12
+    num_filters = 32
+    nb_residuals = 3
     input = tf.keras.layers.Input(shape=(8,8,nb_channels))
 
     x = create_body(input,num_residuals=nb_residuals, num_filters = num_filters )

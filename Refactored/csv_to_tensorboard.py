@@ -1,6 +1,6 @@
 
 
-path = '/home/antoine/Bureau/projects/Parrot/ParrotChess/Refactored/logs/log_2023-10-16_20-30-40.csv'
+path = 'F:\GitRefactored\ParrotChess\Refactored\logs\log_2023-10-16_20-30-40.csv'
 name = '2023-10-16_20-30-40'
 
 import pandas as pd

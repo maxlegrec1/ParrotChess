@@ -7,6 +7,9 @@ import tensorflow as tf
 from tqdm import tqdm
 from scipy.stats import weibull_min
 import random
+import timeit
+import time
+
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -55,12 +58,10 @@ def board_to_input_data(board: chess.Board) -> List[np.ndarray]:
 
     return np.array(input_data,dtype=np.float32)
 
-
 def generate_batch(batch_size,in_pgn):
     total_pos = 0
     x = []
     y_true = []
-    fens = []
     history = 7
     with open(in_pgn) as f:
         while True:
@@ -94,18 +95,16 @@ def generate_batch(batch_size,in_pgn):
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
                             y_true = np.array(y_true,dtype=np.float32)
-                            yield (x,y_true,fens)
+                            yield (x,y_true)
 
 
                             #reset variables
                             last_x = x[-1]
                             x = []
                             y_true = []
-                            fens = []
 
                         if move.uci()[-1]=='n':
                             break
-                        fens.append(board.fen())
                         xs,ys = get_board_data(pgn,board,move)
                         if i == 0 :
                             x.append(np.concatenate((x_start,xs),axis=-1))
@@ -146,8 +145,11 @@ def get_board(elo,board,real_move,TC):
     except:
         elo = 1500
     elo = elo/3000
-    print(TC)
-    TC = float(TC.split('+')[0])
+    #print(TC)
+    if TC == '-':
+        TC = 600
+    else:
+        TC = float(TC.split('+')[0])
 
     TC = TC / 120
 
@@ -454,54 +456,51 @@ policy_index = [
 ]
 
 
-
-def generator_uniform(generator,batch_size):
+def generator_uniform(pgn,batch_size):
+    generator = generate_batch(batch_size,pgn)
     while True:
-        n_batches = [0]*batch_size
-        for i in range(batch_size):
-            n_batches[i] = next(generator)
-        
+        n_batches = [next(generator) for _ in range(batch_size)]
         Xs = []
         Es = []
-        Fs = []
-        played_moves = np.zeros((batch_size,1858))
-        played_values = np.zeros((batch_size,8,8,4))
+        played_moves = np.zeros((batch_size,8,8,(12*5)))
+        played_values = np.zeros((batch_size,8,8,5))
         Ys=[]
         for i in range(batch_size):
             for j in range(batch_size):
-                x,y,f = n_batches[j]
+                x,y= n_batches[j]
                 Xs.append(x[i][:,:,:-2])
                 Es.append(x[i][:,:,-2:])
                 Ys.append(y[i])
-                Fs.append(f[i])
             Xs = np.array(Xs)
             Ys = np.array(Ys)
             Es = np.array(Es)
-            yield [Xs,Es,played_moves,played_values],np.array(Ys),Fs
+            yield [Xs,Es,played_moves,played_values],np.array(Ys)
             Xs=[]
             Ys=[]
             Es=[]
-            Fs=[]
 
 
 
 class data_gen():
     def __init__(self, params):
-        self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        self.gen = generator_uniform(generate_batch(batch_size,pgn),batch_size)
+        self.gen = generator_uniform(pgn,batch_size)
         self.out_channels = 102
-        
-    def get_batch(self):
+    def __next__(self):
+
         return next(self.gen)
     
 def test():
     params = {
         'batch_size': 32,
-        'path_pgn': 'human2.pgn'
+        'path_pgn': 'F:\GitRefactored\ParrotChess\human2.pgn'
     }
     gen = data_gen(params)
-    for _ in range(1000):
-        x,y,fens = gen.get_batch()
-        print("geto", x[0].shape,x[1].shape,x[2].shape,x[3].shape)
+    for _ in tqdm(range(1000)):
+        x,y = next(gen)
+        time.sleep(0.1)
+
+
+
+

@@ -192,3 +192,8 @@ def create_model(params):
     model = tf.keras.Model(inputs=[input1,input2], outputs=h_fc1)
 
     return model
+
+
+if __name__ == '__main__':
+    model = create_model({'num_channels':102,'num_filters':512,'num_residuals':6,'mini_res_channels':64,'num_iters':5})
+    model.summary()

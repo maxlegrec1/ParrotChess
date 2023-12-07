@@ -4,13 +4,11 @@ from datetime import datetime
 import multiprocessing as mp
 import time
 import csv
-batch_size = 32
-#gen = model_uniform(generate_batch(batch_size,pgn,use_transformer=False,only_white=True),batch_size)
 
 
 
 
-#model.compile(optimizer=optimizer)
+
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
