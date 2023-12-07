@@ -314,11 +314,11 @@ def play(model,game_moves,elo):
     
     return predict(board,model,[X_final_no_elo, elo])
 
-model_weights = "/home/antoine/Bureau/projects/Parrot/ParrotChess/model_2023-10-18_19-36-03_320.h5"
-config_name = 'default_config'
+
 
 if __name__ == '__main__':
-    
+    model_weights = "/home/antoine/Bureau/projects/Parrot/ParrotChess/model_2023-10-18_19-36-03_320.h5"
+    config_name = 'default_config'
     model = load_model(model_weights)
     model.summary()
     elo = 3000

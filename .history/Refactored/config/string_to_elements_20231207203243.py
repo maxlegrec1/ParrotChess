@@ -1,0 +1,59 @@
+
+
+########### MODELS
+import models.Leela_ResNet as model
+import models.MiniResidualEmbedding as MiniResidual
+<<<<<<< Updated upstream
+import models.MiniResidualEmbedding_TC as MiniResidual_TC
+import models.MiniResTCEvaluater as MiniResTCEvaluater
+=======
+import models.MiniResidualEmbedding_TC as ResidualTC
+import models.UResidual as URes
+>>>>>>> Stashed changes
+########### TRAINERS
+import trainers.default_trainer as default_trainer
+import trainers.trainer_evaluater as trainer_evaluater
+
+########### DATA GEN
+
+import data_gen.default_gen as default_gen
+import data_gen.gen_castling as gen_castling
+import data_gen.uniform_gen as uniform_gen
+import data_gen.gen_TC as gen_TC
+import data_gen.gen_TC_thinker as gen_TC_thinker
+def from_string_to_fun():
+    
+    return {
+        
+        
+        
+        "ResNet": model.create_model,
+        
+        "MiniResidual": MiniResidual.create_model,
+
+        "MiniResidual_TC": MiniResidual_TC.create_model,
+
+        "MiniResTCEvaluater": MiniResTCEvaluater.create_model,
+        
+        "ResidualTC" : ResidualTC.create_model,
+        
+        "URes" : URes.create_model,
+        
+        "default_trainer": default_trainer.trainer,
+        
+        "trainer_evaluater": trainer_evaluater.trainer,
+        
+        "human_generator": default_gen.data_gen,
+        
+        "castling_generator": gen_castling.data_gen,
+        
+        "uniform_generator" : uniform_gen.data_gen,
+        
+<<<<<<< Updated upstream
+        "TC_generator" : gen_TC.data_gen,
+
+        "TC_thinker" : gen_TC_thinker.data_gen,
+=======
+        "TC_generator" : TC.data_gen
+>>>>>>> Stashed changes
+    }
