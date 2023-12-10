@@ -125,13 +125,13 @@ def create_body(inputs,num_residuals=16, num_filters = 64,mini_res_channels = 64
                         output_channels=num_filters,
                         name='input',
                         bn_scale=True)
-    mini_residual = residual_model(mini_res_channels,name='mini_residual')
+    #mini_residual = residual_model(mini_res_channels,name='mini_residual')
     for i in range(num_residuals):
         flow = residual_block(flow,
                                 num_filters,
                                 name='residual_{}'.format(i + 1))
         main,mini_res_input = flow[:,:,:,mini_res_channels-2:],flow[:,:,:,:mini_res_channels-2]
-        mini_res_output = mini_residual(tf.concat([mini_res_input,inputs[1]],axis = -1))
+        mini_res_output = residual_model(mini_res_channels,name=f'mini_residual_{i}')(tf.concat([mini_res_input,inputs[1]],axis = -1))
         flow = tf.keras.layers.concatenate([main,mini_res_output],axis=-1)
     return flow
 

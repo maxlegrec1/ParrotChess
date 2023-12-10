@@ -16,6 +16,7 @@ import data_gen.gen_castling as gen_castling
 import data_gen.uniform_gen as uniform_gen
 import data_gen.gen_TC as gen_TC
 import data_gen.gen_TC_thinker as gen_TC_thinker
+import data_gen.gen_TC_par as gen_TC_par
 def from_string_to_fun():
     
     return {
@@ -43,4 +44,6 @@ def from_string_to_fun():
         "TC_generator" : gen_TC.data_gen,
 
         "TC_thinker" : gen_TC_thinker.data_gen,
+
+        "gen_TC_par" : gen_TC_par.data_gen,
     }
