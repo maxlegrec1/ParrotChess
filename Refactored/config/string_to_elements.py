@@ -45,5 +45,5 @@ def from_string_to_fun():
 
         "TC_thinker" : gen_TC_thinker.data_gen,
 
-        "gen_TC_par" : gen_TC_par.data_gen,
+        "gen_TC" : gen_TC.data_gen,
     }
