@@ -25,9 +25,11 @@ def main():
                     learning_rate=active_lr,
                     momentum=0.9,
                     nesterov=True)
-    model.compile(optimizer = optimizer)
-
+    #model.compile(optimizer = optimizer)
+    model.compile(optimizer = tf.keras.optimizers.Nadam())
+    model.load_weights("model_2024-01-25_11-50-16_40.h5")
     model.summary()
+    #tf.keras.mixed_precision.set_global_policy('float32')
     trainer(data_generator, model, **training_args)
     
 if __name__ == '__main__':

@@ -5,3 +5,4 @@ Refactored/logs/*.txt
 *.pyc
 Refactored/Training/*/*.gz
 *.csv
+tensorboard/*

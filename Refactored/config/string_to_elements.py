@@ -5,6 +5,7 @@ import models.Leela_ResNet as model
 import models.MiniResidualEmbedding as MiniResidual
 import models.MiniResidualEmbedding_TC as MiniResidual_TC
 import models.MiniResTCEvaluater as MiniResTCEvaluater
+import models.BT4 as BT4
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
 import trainers.trainer_evaluater as trainer_evaluater
@@ -30,6 +31,8 @@ def from_string_to_fun():
         "MiniResidual_TC": MiniResidual_TC.create_model,
 
         "MiniResTCEvaluater": MiniResTCEvaluater.create_model,
+
+        "BT4": BT4.create_model,
         
         "default_trainer": default_trainer.trainer,
         
@@ -46,4 +49,6 @@ def from_string_to_fun():
         "TC_thinker" : gen_TC_thinker.data_gen,
 
         "gen_TC_par" : gen_TC_par.data_gen,
+
+        "gen_TC" : gen_TC.data_gen,
     }

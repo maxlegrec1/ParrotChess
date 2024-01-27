@@ -22,7 +22,7 @@ def train_step(batch,model):
         #all non negative values should be 1
         mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
         y_true = tf.nn.relu(y_true)
-        y_pred = model(x)
+        y_pred = model(x)*mask
         #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
         loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
         gradients = tape.gradient(loss, model.trainable_variables)
@@ -30,7 +30,8 @@ def train_step(batch,model):
         gradients, _ = tf.clip_by_global_norm(gradients, 10000)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        lm = tf.reduce_sum(mask*tf.keras.layers.Softmax()(y_pred),axis=-1)
+        #tf.print(mask.dtype,y_pred.dtype)
+        lm = tf.reduce_sum(tf.keras.layers.Softmax()(y_pred),axis=-1)
 
 
 
@@ -57,7 +58,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
     writer = csv.DictWriter(log_file, fieldnames=names_to_save)
     writer.writeheader()
     total_steps = 0
-    for epoch in range(10000):
+    for epoch in range(0,10000):
         timer = time.time()
         total_loss = 0
         Legal_prob = 0
@@ -69,7 +70,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
 
         for step in range(num_step):
             batch = gen.get_batch()
-            active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps)) *(1/ 10**(np.floor(epoch/100)))
+            active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))
             model.optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, model)
             loss = tf.reduce_mean(loss)

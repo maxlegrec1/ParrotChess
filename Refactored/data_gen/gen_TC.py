@@ -177,6 +177,8 @@ def get_board(elo,board,real_move,TC):
         possible_str = possible.uci()
         if possible_str[-1]!='n':
             lm[policy_index.index(possible_str)] = 0
+        else:
+             lm[policy_index.index(possible_str[:-1])] = 0
 
 
 
@@ -493,9 +495,13 @@ class data_gen():
 def test():
     params = {
         'batch_size': 32,
-        'path_pgn': 'human2.pgn'
+        'path_pgn': 'F:\GitRefactored\ParrotChess\human2.pgn'
     }
     gen = data_gen(params)
     for _ in range(1000):
         x,y = gen.get_batch()
         print("geto", x[0].shape,x[1].shape)
+
+
+if __name__ == '__main__':
+    test()
