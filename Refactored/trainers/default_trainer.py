@@ -81,7 +81,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
             accuracy = accuracy / (step + 1) * step + acc / (step + 1)
             with summary.as_default():
                   tf.summary.scalar('loss', total_loss, step=step + 1000*epoch)
-                  tf.summary.scalar('learning rate', active_lr_float / 10** np.floor(np.log10(active_lr_float)), step=step + 1000*epoch)
+                  tf.summary.scalar('learning rate', active_lr_float )
                   tf.summary.scalar('accuracy', accuracy, step=step + + 1000*epoch)
                   tf.summary.scalar('Legal_prob', Legal_prob, step=step + 1000*epoch)
             total_steps += 1
