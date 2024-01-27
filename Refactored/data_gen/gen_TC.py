@@ -68,7 +68,11 @@ def generate_batch(batch_size,in_pgn):
             if pgn.next()!=None:
                 moves = [move for move in pgn.mainline_moves()]
                 #print(int(pgn.headers["WhiteElo"]))
-                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(int(pgn.headers["WhiteElo"]),3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                try: 
+                    elo = int(pgn.headers["WhiteElo"])
+                except:
+                    elo = 1500
+                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
                     start_index = random.randint(10,len(moves)-1)
                     #make the start_index first moves 
                     board = chess.Board()
