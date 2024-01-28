@@ -22,7 +22,7 @@ def train_step(batch,model):
         #all non negative values should be 1
         mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
         y_true = tf.nn.relu(y_true)
-        y_pred = model(x)*mask
+        y_pred = model(x)
         #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
         loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
         gradients = tape.gradient(loss, model.trainable_variables)
@@ -31,7 +31,7 @@ def train_step(batch,model):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
         #tf.print(mask.dtype,y_pred.dtype)
-        lm = tf.reduce_sum(tf.keras.layers.Softmax()(y_pred),axis=-1)
+        lm = tf.reduce_sum(mask*tf.keras.layers.Softmax()(y_pred),axis=-1)
 
 
 
