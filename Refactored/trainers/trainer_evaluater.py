@@ -50,7 +50,7 @@ def train_step(batch,model,evaluater,simulator):
 
         return loss_model,lm,acc
 
-from train_simu2 import myMetric
+#from Refactored.utils.train_simu2 import myMetric
 def trainer(params):
     def aux(*args, **kwargs):
         return train(*args,**kwargs, lr_start=params['lr_start'], lr = params['lr'])

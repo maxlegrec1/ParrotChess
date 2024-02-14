@@ -7,6 +7,8 @@ import tensorflow as tf
 from tqdm import tqdm
 from scipy.stats import weibull_min
 import random
+import ray
+import time
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -60,40 +62,49 @@ def generate_batch(batch_size,in_pgn):
     total_pos = 0
     x = []
     y_true = []
+    last_x = []
     history = 7
+    moves = []
+    start_index = 0
+    board = None
+    pgn = None
+    x_start = []
+    xs = []
+    ys = []
     with open(in_pgn) as f:
         while True:
             #load game
+            del pgn
             pgn = chess.pgn.read_game(f)
             if pgn.next()!=None:
+                del moves
                 moves = [move for move in pgn.mainline_moves()]
-                #print(int(pgn.headers["WhiteElo"]))
                 try: 
                     elo = int(pgn.headers["WhiteElo"])
                 except:
                     elo = 1500
                 if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                    del start_index
                     start_index = random.randint(10,len(moves)-1)
-                    #make the start_index first moves 
+                    #make the start_index first moves
+                    del board 
                     board = chess.Board()
+                    del x_start
                     x_start = []
-                    stop = False
-                    for move in moves[:start_index]:
-                        #board.push(move)
-                        if move.uci()[-1]=='n':
-                            stop = True
-                            break
+
+                    for i,move in enumerate(moves[:start_index]):
+                        del xs,ys
                         xs,ys = get_board_data(pgn,board,move)
-                        x_start.append(xs)
-                    #x_start = np.array(x_start,dtype=np.float32)
-                    if not stop:
-                        x_start = x_start[start_index-(history):]
-                        x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
-                    #print(x_start.shape)
+                        if (start_index-i)%2==0:
+                            x_start.append(xs)
+                        else:
+                            x_start.append(swap_side(xs))
+
+
+                    x_start = x_start[start_index-(history):]
+                    x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
                     for i,move in enumerate(moves[start_index:]):
-                        if stop:
-                            break
-                        #print(total_pos)
+
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
                             y_true = np.array(y_true,dtype=np.float32)
@@ -101,20 +112,22 @@ def generate_batch(batch_size,in_pgn):
 
 
                             #reset variables
+                            del last_x
                             last_x = x[-1]
+                            del x
                             x = []
+                            del y_true
                             y_true = []
 
-                        if move.uci()[-1]=='n':
-                            break
+                        del xs,ys
                         xs,ys = get_board_data(pgn,board,move)
                         if i == 0 :
                             x.append(np.concatenate((x_start,xs),axis=-1))
                         else:
                             if len(x)==0:
-                                x.append(np.concatenate((last_x[:,:,12:(history+1)*12],xs),axis=-1))
+                                x.append(np.concatenate((swap_side(last_x[:,:,12:(history+1)*12]),xs),axis=-1))
                             else:
-                                x.append(np.concatenate((x[-1][:,:,12:(history+1)*12],xs),axis=-1))
+                                x.append(np.concatenate((swap_side(x[-1][:,:,12:(history+1)*12]),xs),axis=-1))
                         y_true.append(ys)
                         total_pos+=1
                         
@@ -187,8 +200,10 @@ def get_board(elo,board,real_move,TC):
 
 
     #find the index of the move in policy_index
-
-    move_id = policy_index.index(move.uci())
+    if move.uci()[-1]!='n':
+        move_id = policy_index.index(move.uci())
+    else:
+        move_id = policy_index.index(move.uci()[:-1])
 
     one_hot_move = np.zeros(1858,dtype=np.float32)
     one_hot_move[move_id] = 1
@@ -198,7 +213,7 @@ def get_board(elo,board,real_move,TC):
 
     one_hot_move = one_hot_move + lm
 
-
+    del mirrored_board
     return np.concatenate((before,castling_rights,en_passant_right,color,TC,elo),axis=2),one_hot_move
     
 def get_board_data(pgn,board,real_move):
@@ -209,14 +224,14 @@ def get_board_data(pgn,board,real_move):
     TC = pgn.headers['TimeControl']
     return get_board(elo,board,real_move,TC)
 
-def get_x_from_board(elo,board):
+def get_x_from_board(elo,board,TC):
     print(board.turn == chess.WHITE)
     if board.turn == chess.WHITE:
         color = 1
         mirrored_board = board.copy()
     else:
         color = 0
-        print("yes")
+        #print("yes")
         mirrored_board = board.mirror()
 
     try:
@@ -224,8 +239,21 @@ def get_x_from_board(elo,board):
     except:
         elo = 1500
     elo = elo/3000
+
+    TC = TC.split('+')[0]
+    if TC == '-':
+        TC = 600
+    else:
+        TC = float(TC.split('+')[0])
+
+    TC = TC / 120
+
+
     color = np.ones((8,8,1),dtype=np.float32)*color
     elo = np.ones((8,8,1),dtype=np.float32)*elo
+    TC = np.ones((8,8,1),dtype=np.float32)*TC
+    
+
     before = board_to_input_data(mirrored_board)
 
 
@@ -245,7 +273,22 @@ def get_x_from_board(elo,board):
     if not mirrored_board.has_pseudo_legal_en_passant():
         en_passant_right *= 0    
 
-    return np.concatenate((before,castling_rights,en_passant_right,color,elo),axis=2)
+    return np.concatenate((before,castling_rights,en_passant_right,color,TC,elo),axis=2)
+
+def swap_side(array):
+    num_filters = array.shape[-1]
+
+    flipped = np.flip(array,axis = 0)
+
+    num_positions = num_filters//12
+
+    reordered = []
+
+    for k in range(num_positions):
+        reordered.append(flipped[:,:,(12*k)+6:(12*k)+12])
+        reordered.append(flipped[:,:,(12*k):(12*k)+6])
+
+    return np.concatenate(reordered,axis = -1)
 
 policy_index = [
     "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a1a2", "a1b2",
@@ -460,12 +503,19 @@ policy_index = [
 
 
 
-def generator_uniform(generator,batch_size):
+def generator_uniform(pgn,batch_size):
+    generator = RemoteWorker.remote(batch_size,pgn)
+    n_batches_ref = [generator.get_next.remote() for _ in range(batch_size)]
+    n_batches = []
+    total_yields = 0
+    print(f"generating first {batch_size} batches")
     while True:
-        n_batches = [0]*batch_size
-        for i in range(batch_size):
-            n_batches[i] = next(generator)
-        
+
+        del n_batches
+        n_batches = ray.get(n_batches_ref)
+        #print("done")
+        del n_batches_ref
+        n_batches_ref = [generator.get_next.remote() for _ in range(batch_size)]
         Xs = []
         Es = []
         Ys=[]
@@ -479,9 +529,11 @@ def generator_uniform(generator,batch_size):
             Ys = np.array(Ys)
             Es = np.array(Es)
             yield [Xs,Es],np.array(Ys)
+            total_yields+=1
             Xs=[]
             Ys=[]
             Es=[]
+
 
 
 
@@ -490,7 +542,8 @@ class data_gen():
         self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        self.gen = generator_uniform(generate_batch(batch_size,pgn),batch_size)
+        ray.init(object_store_memory=7*10**9)
+        self.gen = generator_uniform(pgn,batch_size)
         self.out_channels = 102
         
     def get_batch(self):
@@ -498,14 +551,24 @@ class data_gen():
     
 def test():
     params = {
-        'batch_size': 32,
-        'path_pgn': 'F:\GitRefactored\ParrotChess\human2.pgn'
+        'batch_size': 256,
+        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/human2.pgn'
     }
     gen = data_gen(params)
-    for _ in range(1000):
+    for i in range(int(1e20)):
         x,y = gen.get_batch()
-        print("geto", x[0].shape,x[1].shape)
+        print(i, x[0].shape,x[1].shape)
+
+
+@ray.remote(num_cpus=1)
+class RemoteWorker(object):
+    def __init__(self,batch_size,in_pgn):
+        self.gen = generate_batch(batch_size,in_pgn)
+
+    def get_next(self):
+        return next(self.gen)
 
 
 if __name__ == '__main__':
+
     test()

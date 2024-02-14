@@ -6,3 +6,5 @@ Refactored/logs/*.txt
 Refactored/Training/*/*.gz
 *.csv
 tensorboard/*
+wandb/*
+leelalogs/*

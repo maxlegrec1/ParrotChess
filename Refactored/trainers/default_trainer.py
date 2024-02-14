@@ -4,8 +4,8 @@ from datetime import datetime
 import multiprocessing as mp
 import time
 import csv
-
-
+import wandb
+import os
 
 
 
@@ -49,16 +49,19 @@ def trainer(params):
 
 
 
-def train(gen, model, num_step, lr_start ,lr, warmup_steps):
-
+def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, resume_id, start_from, total_num_steps):
+    if resume_id == None:
+        id = wandb.util.generate_id()
+        wandb.init(project='owt', id= id, resume = 'allow')
+    else:
+        id = resume_id
+        wandb.init(project='owt', id= id, resume = 'allow')
+        model.load_weights(wandb.restore(f"model_best_{id}.h5").name)
     #create a log file where we will store the results. It shall be named after the current date and time
-    log_file = open(f"Refactored/logs/log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv", "w")
-    summary = tf.summary.create_file_writer(f"tensorboard/logdir_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
-    names_to_save = ['epoch', 'total_loss', 'accuracy', 'Legal_prob']
-    writer = csv.DictWriter(log_file, fieldnames=names_to_save)
-    writer.writeheader()
-    total_steps = 0
-    for epoch in range(0,10000):
+    print("id : " ,id)
+    total_steps = start_from*(total_num_steps//num_report_steps)
+    best_model_acc = 0
+    for epoch in range(start_from,total_num_steps//num_report_steps):
         timer = time.time()
         total_loss = 0
         Legal_prob = 0
@@ -66,42 +69,29 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps):
         if epoch%40==0 and epoch!=0:
             #save weights
             model.save_weights(f"model_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{epoch}.h5")
-        print(f"Epoch {epoch+1}:")
 
         for step in range(num_step):
             batch = gen.get_batch()
             active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))
             model.optimizer.lr.assign(active_lr_float)
             loss,lm,acc = train_step(batch, model)
+            del batch
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)
             total_loss = total_loss / (step + 1) * step + loss / (step + 1)
             Legal_prob = Legal_prob / (step + 1) * step + lm / (step + 1)
 
             accuracy = accuracy / (step + 1) * step + acc / (step + 1)
-            with summary.as_default():
-                  tf.summary.scalar('loss', total_loss, step=step + 1000*epoch)
-                  tf.summary.scalar('learning rate', active_lr_float )
-                  tf.summary.scalar('accuracy', accuracy, step=step + + 1000*epoch)
-                  tf.summary.scalar('Legal_prob', Legal_prob, step=step + 1000*epoch)
+
             total_steps += 1
-            # Use carriage return to overwrite the current line
+
             print(
-                f"Step: {step}, Lr: {(active_lr_float / 10** np.floor(np.log10(active_lr_float))):.1f} 10^{int(np.floor(np.log10(active_lr_float)))}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
+                f"Step: {total_steps}, Lr: {(active_lr_float / 10** np.floor(np.log10(active_lr_float))):.1f} 10^{int(np.floor(np.log10(active_lr_float)))}, Loss: {total_loss:.4f}, Acc: {accuracy:.4f}, Legal_prob: {Legal_prob:.4f}, time : {(time.time() - timer):.1f}"
                 ,end="\r")
-            # summary.flush()
-        # Write the results to the log file
-        writer.writerow({"epoch": epoch, "total_loss" : float(total_loss), "accuracy" : float(accuracy), "Legal_prob" : float(Legal_prob)})
-        print()  # Move to the next line after completing the epoch
-        
+        print()
 
-#tf.print("loading weights")
-#model.load_weights(f"model_2023-09-03_12-56-42_120.h5")
-#tf.print("weights loaded")
-
-#tf.print("going back to previous batches")
-#for i in tqdm(range(120*1000)):
-    #next(gen)
-#train(1000, model)
-
+        wandb.log({"train/loss": total_loss, "accuracy": accuracy, "Legal_prob": Legal_prob, "lr": active_lr_float, "iter": total_steps+1})
+        if accuracy >= best_model_acc:
+            best_model_acc = accuracy
+            model.save_weights(os.path.join(wandb.run.dir,f"model_best_{id}.h5"))
 
