@@ -59,7 +59,7 @@ STATES = [INIT, WAITING_FOR_GAME, PLAYING, GAME_OVER]
 
 if __name__ == "__main__":
     CURR_STATE = INIT
-
+    ELO = 3000
     MOVE_LIST = None
     GAME_ID = None
     #load model
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
 
     model = create_model()
-    model.load_weights("/media/maxime/Crucial X8/GitRefactored/ParrotChess/model_2024-02-12_12-46-48_280.h5")
+    model.load_weights("/media/maxime/Crucial X8/GitRefactored/ParrotChess/model_2024-02-23_09-33-32_960.h5")
     #model.load_weights("F:\GitRefactored\ParrotChess\model_2024-02-10_11-07-25_160.h5")
 
     print(CURR_STATE)
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                 MOVE_LIST.append(new_move)
                 print(MOVE_LIST) 
             if len(MOVE_LIST)>=8 and new_move!=None:
-                X = list_uci_to_input(MOVE_LIST,3000,"300")
+                X = list_uci_to_input(MOVE_LIST,ELO,"300")
                 #do the inference here
                 Y = model(X)
                 best = tf.argmax(Y,axis=-1)

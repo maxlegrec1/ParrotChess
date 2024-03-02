@@ -225,7 +225,7 @@ def get_board_data(pgn,board,real_move):
     return get_board(elo,board,real_move,TC)
 
 def get_x_from_board(elo,board,TC):
-    print(board.turn == chess.WHITE)
+    #print(board.turn == chess.WHITE)
     if board.turn == chess.WHITE:
         color = 1
         mirrored_board = board.copy()
@@ -533,6 +533,30 @@ def generator_uniform(pgn,batch_size):
             Xs=[]
             Ys=[]
             Es=[]
+
+def generator_uniform2(pgn,batch_size):
+    generator = RemoteWorker.remote(batch_size,pgn)
+    n_batches_ref = [generator.get_next.remote()]
+    n_batches = []
+    total_yields = 0
+    print(f"generating first {batch_size} batches")
+    while True:
+
+        del n_batches
+        n_batches = ray.get(n_batches_ref)
+        #print("done")
+        del n_batches_ref
+        n_batches_ref = [generator.get_next.remote()]
+
+  
+        x,y= n_batches[0]
+        Xs=x[:,:,:,:-2]
+        Es=x[:,:,:,-2:]
+        Ys=y
+
+        yield [Xs,Es],np.array(Ys)
+        total_yields+=1
+
 
 
 

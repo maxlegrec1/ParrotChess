@@ -26,9 +26,9 @@ def main():
     trainer = converter[params['trainer']](arguments)
 
     #learning rate will be set later on
-    model.compile(optimizer = tf.keras.optimizers.Nadam())
+    model.compile(optimizer = tf.keras.optimizers.Nadam(beta_1=0.9,beta_2=0.98))
 
-    #model.load_weights("model_2024-02-09_23-55-57_80.h5")
+
     model.summary()
     trainer(data_generator, model, **training_args)
     

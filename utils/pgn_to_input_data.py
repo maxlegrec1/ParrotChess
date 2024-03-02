@@ -10,7 +10,7 @@ import time
 cwd = os.getcwd()
 sys.path.append(cwd)
 
-from Refactored.data_gen.gen_TC import get_x_from_board
+from Refactored.data_gen.gen_TC import get_x_from_board,swap_side
 
 def list_uci_to_input(list_of_moves,elo,TC):
     board = chess.Board()
@@ -25,21 +25,20 @@ def list_uci_to_input(list_of_moves,elo,TC):
             print("geto",board.turn == chess.WHITE)
         xs = get_x_from_board(elo,board,TC)
         board.push(real_move)
-        #this also pushes the move to the board
         if (color-i)%2 == 1:
-            X.append(np.flip(xs, axis= 0))
+            X.append(swap_side(xs[:,:,:12]))
         else:
-            X.append(xs)
+            X.append(xs[:,:,:12])
 
-        X.append(get_x_from_board(elo,board,TC))
+    #add last position
+    X.append(get_x_from_board(elo,board,TC))
 
 
-    X = np.array(X)
+
+
     X_final = np.concatenate([x[:,:,:12] for x in X[-8:-1]], axis = -1)
     X_final = np.concatenate([X_final,X[-1]], axis = -1)
 
-    for i in range(X_final.shape[-1]):
-        print(X_final[:,:,i])
 
     return [np.expand_dims(X_final[:,:,:-2],axis = 0),np.expand_dims(X_final[:,:,-2:],axis=0)]
 

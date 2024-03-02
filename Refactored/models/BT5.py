@@ -1975,7 +1975,7 @@ def make_map():
 
 def create_model(*args,**kwargs):
     import yaml
-    with open("BT5.yaml") as file:
+    with open("BT6.yaml") as file:
         cfg = yaml.safe_load(file)
 
     tfprocess = TFProcess(cfg)

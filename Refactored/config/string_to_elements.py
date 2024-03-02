@@ -6,6 +6,7 @@ import models.MiniResidualEmbedding as MiniResidual
 import models.MiniResidualEmbedding_TC as MiniResidual_TC
 import models.MiniResTCEvaluater as MiniResTCEvaluater
 import models.BT4 as BT4
+import models.BT5 as BT5
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
 import trainers.trainer_evaluater as trainer_evaluater
@@ -33,6 +34,8 @@ def from_string_to_fun():
         "MiniResTCEvaluater": MiniResTCEvaluater.create_model,
 
         "BT4": BT4.create_model,
+
+        "BT5": BT5.create_model,
         
         "default_trainer": default_trainer.trainer,
         

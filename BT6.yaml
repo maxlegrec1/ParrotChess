@@ -71,16 +71,16 @@ training:
     sparse: false
 
 model:              
-    embedding_size: 1024
-    policy_embedding_size: 1024
+    embedding_size: 2048
+    policy_embedding_size: 2048
     value_embedding_size: 128
     moves_left_embedding_size: 32
     encoder_layers: 15                   # number of intermediate attention layers in the policy head
     encoder_heads: 32                     # number of attention heads in encoder layers, emb // (32 or 64) recommended
                                          # with 64 memory is same as embedding, with 32 is double
-    encoder_d_model: 1024                 # size of the Q, K, & V vectors in encoder layers -- divisible by encoder_heads
+    encoder_d_model: 2048                 # size of the Q, K, & V vectors in encoder layers -- divisible by encoder_heads
     encoder_dff: 1536                    # size of the expansion layer in encoder layer ffn
-    policy_d_model: 1024                  # size of the query and key vectors in final attention layer
+    policy_d_model: 2048                  # size of the query and key vectors in final attention layer
     policy_d_aux: 256
     dropout_rate: 0.0                    # the dropout rate used for weight regularization of attention during training
                                         # makes memory 33 -> 39 GB on A100 as observed by Teck and Kovax

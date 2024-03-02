@@ -16,29 +16,54 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 #custom training loop
 @tf.function
-def train_step(batch,model):
-    with tf.GradientTape() as tape:
-        x,y_true = batch
-        #all non negative values should be 1
-        mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
-        y_true = tf.nn.relu(y_true)
-        y_pred = model(x)
-        #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
-        loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        #clip gradients
+def train_step(batch,model,gradient_acc_steps = 1):
+    x,y_true = batch
+    #all non negative values should be 1
+    mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
+    y_true = tf.nn.relu(y_true)
+    if gradient_acc_steps==1:
+        with tf.GradientTape() as tape:
+                #tf.print(i)
+                y_pred = model(x)
+                #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
+                loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
+                
+                gradients = tape.gradient(loss, model.trainable_variables)
+        
         gradients, _ = tf.clip_by_global_norm(gradients, 10000)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        #tf.print(mask.dtype,y_pred.dtype)
         lm = tf.reduce_sum(mask*tf.keras.layers.Softmax()(y_pred),axis=-1)
+
+        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
+
+    else:
+
+        for i in range(gradient_acc_steps):
+            with tf.GradientTape() as tape:
+                #tf.print(i)
+                y_pred = model([x[0][i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps],x[1][i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps]])
+                #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
+                loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true[i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps]),logits=y_pred)/gradient_acc_steps
+                
+                gradients = tape.gradient(loss, model.trainable_variables)
+                
+                accum_ops = [accum_vars[i].assign_add(grad) for i, grad in enumerate(gradients)]
+
+                
+        accum_vars, _ = tf.clip_by_global_norm(accum_vars, 10000)
+
+        model.optimizer.apply_gradients(zip(accum_vars, model.trainable_variables))
+
+        #tf.print(mask.dtype,y_pred.dtype)
+        lm = tf.reduce_sum(mask[i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps]*tf.keras.layers.Softmax()(y_pred),axis=-1)
 
 
 
         #tf.print(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1))
-        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
+        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true[i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps],axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
 
-        return loss,lm,acc
+    return loss,lm,acc
 
 
 def trainer(params):
@@ -56,10 +81,10 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
     else:
         id = resume_id
         wandb.init(project='owt', id= id, resume = 'allow')
-        model.load_weights(wandb.restore(f"model_best_{id}.h5").name)
+        model.load_weights(wandb.restore(f"model_last_{id}.h5").name)
     #create a log file where we will store the results. It shall be named after the current date and time
     print("id : " ,id)
-    total_steps = start_from*(total_num_steps//num_report_steps)
+    total_steps = start_from*num_report_steps
     best_model_acc = 0
     for epoch in range(start_from,total_num_steps//num_report_steps):
         timer = time.time()
@@ -74,6 +99,12 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
             batch = gen.get_batch()
             active_lr_float = (lr_start + (lr - lr_start) * min(1, (total_steps + 1) / warmup_steps))
             model.optimizer.lr.assign(active_lr_float)
+
+
+
+            
+
+
             loss,lm,acc = train_step(batch, model)
             del batch
             loss = tf.reduce_mean(loss)
@@ -94,4 +125,5 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
         if accuracy >= best_model_acc:
             best_model_acc = accuracy
             model.save_weights(os.path.join(wandb.run.dir,f"model_best_{id}.h5"))
+        model.save_weights(os.path.join(wandb.run.dir,f"model_last_{id}.h5"))
 
