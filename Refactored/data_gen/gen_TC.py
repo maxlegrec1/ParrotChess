@@ -94,7 +94,7 @@ def generate_batch(batch_size,in_pgn):
 
                     for i,move in enumerate(moves[:start_index]):
                         del xs,ys
-                        xs,ys = get_board_data(pgn,board,move)
+                        xs,ys = get_board_data(pgn,board,move,i)
                         if (start_index-i)%2==0:
                             x_start.append(xs)
                         else:
@@ -120,7 +120,7 @@ def generate_batch(batch_size,in_pgn):
                             y_true = []
 
                         del xs,ys
-                        xs,ys = get_board_data(pgn,board,move)
+                        xs,ys = get_board_data(pgn,board,move,start_index+i)
                         if i == 0 :
                             x.append(np.concatenate((x_start,xs),axis=-1))
                         else:
@@ -144,7 +144,7 @@ def mirror_uci_string(uci_string):
 
 
 
-def get_board(elo,board,real_move,TC):
+def get_board(elo,board,real_move,TC,move_number):
     if board.turn == chess.WHITE:
         color = 1
         mirrored_board = board.copy()
@@ -186,8 +186,10 @@ def get_board(elo,board,real_move,TC):
 
     #add en passant rights
     en_passant_right = np.ones((8,8,1),dtype=np.float32)
+    #to comment later
+    en_passant_right *=move_number
     if not mirrored_board.has_pseudo_legal_en_passant():
-        en_passant_right *= 0    
+        en_passant_right *= -1    
 
     lm =  - np.ones(1858,dtype=np.float32)
     for possible in mirrored_board.legal_moves:
@@ -216,13 +218,13 @@ def get_board(elo,board,real_move,TC):
     del mirrored_board
     return np.concatenate((before,castling_rights,en_passant_right,color,TC,elo),axis=2),one_hot_move
     
-def get_board_data(pgn,board,real_move):
+def get_board_data(pgn,board,real_move,move_number):
     if board.turn == chess.WHITE:
         elo = pgn.headers["WhiteElo"]
     else:
         elo = pgn.headers["BlackElo"]
     TC = pgn.headers['TimeControl']
-    return get_board(elo,board,real_move,TC)
+    return get_board(elo,board,real_move,TC,move_number)
 
 def get_x_from_board(elo,board,TC):
     #print(board.turn == chess.WHITE)
@@ -566,7 +568,7 @@ class data_gen():
         self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        ray.init(object_store_memory=7*10**9)
+        ray.init(object_store_memory=1*10**9)
         self.gen = generator_uniform(pgn,batch_size)
         self.out_channels = 102
         

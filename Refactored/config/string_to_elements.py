@@ -9,7 +9,7 @@ import models.BT4 as BT4
 import models.BT5 as BT5
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
-import trainers.trainer_evaluater as trainer_evaluater
+
 
 ########### DATA GEN
 
@@ -38,8 +38,6 @@ def from_string_to_fun():
         "BT5": BT5.create_model,
         
         "default_trainer": default_trainer.trainer,
-        
-        "trainer_evaluater": trainer_evaluater.trainer,
         
         "human_generator": default_gen.data_gen,
         
