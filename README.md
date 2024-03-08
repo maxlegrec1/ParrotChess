@@ -29,6 +29,8 @@ This means that in contrary to Maia, which uses a range of models (one for each 
 Insert training losses, metris, cool graphs here.
 Graphs should include accuracy per elo, accuracy per move number.
 
+![Elo Distribution](/Elo_distribution.png)
+
 ## Installation
 
 Install ParrotChess with Git
