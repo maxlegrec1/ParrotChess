@@ -187,9 +187,9 @@ def get_board(elo,board,real_move,TC,move_number):
     #add en passant rights
     en_passant_right = np.ones((8,8,1),dtype=np.float32)
     #to comment later
-    en_passant_right *=move_number
+    #en_passant_right *=move_number
     if not mirrored_board.has_pseudo_legal_en_passant():
-        en_passant_right *= -1    
+        en_passant_right *= 0    
 
     lm =  - np.ones(1858,dtype=np.float32)
     for possible in mirrored_board.legal_moves:
@@ -568,7 +568,7 @@ class data_gen():
         self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        ray.init(object_store_memory=1*10**9)
+        ray.init(object_store_memory=7*10**9)
         self.gen = generator_uniform(pgn,batch_size)
         self.out_channels = 102
         

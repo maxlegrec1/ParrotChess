@@ -5,19 +5,23 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm, lognorm, expon, gamma, weibull_min
-def uniform_density(elo_min = 500, elo_max = 3000):
-    return 1/(elo_max - elo_min)
+def uniform_density(elo,elo_min = 2500, elo_max = 3000):
+    if elo >=2500:
+        return 1/(elo_max - elo_min)
+    else:
+        return 0
 
 
 
 f = open("human2.pgn")
 samples = []
 
-
+'''
 #use the john von neumann algorithm to sample uniformly from the distribution
 for i in tqdm(range(1000000)):
     pgn = chess.pgn.read_game(f)
     elo = int(pgn.headers["WhiteElo"])
+
     samples.append(elo)
 sample = np.array(samples)
 
@@ -62,16 +66,17 @@ print(np.mean(sample))
 #plt.plot(x, best_fit.pdf(x, *best_params), 'r-', label='Best fit')
 #plt.legend()
 #plt.show()
-
-
+Best fit:  weibull_min
+Parameters:  (1.0418159053857048, 2499.9497300298544, 139.5627884452257)
+'''
 samples = []
 #use the john von neumann algorithm to sample uniformly from the distribution
 for i in tqdm(range(1000000)):
     pgn = chess.pgn.read_game(f)
     elo = int(pgn.headers["WhiteElo"])
-    if random.random() < uniform_density()/(4*best_fit.pdf(elo,*best_params)):
+    if random.random() < uniform_density(elo)/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
         samples.append(elo)
 sample = np.array(samples)
-
+print(len(samples))
 plt.hist(sample, bins=150, density=True, alpha=0.5, label='Data')
 plt.show()
