@@ -1998,7 +1998,6 @@ def create_model(*args,**kwargs):
 if __name__=='__main__':
     model = create_model()
     model.summary()
-
     input1 = tf.zeros((1,8,8,102))
     input2 = tf.zeros((1,8,8,2))
 
