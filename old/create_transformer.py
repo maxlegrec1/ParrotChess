@@ -66,7 +66,7 @@ class Encoder(Layer):
         super(Encoder, self).__init__(**kwargs)
         self.dropout = Dropout(rate)
         self.encoder_layer = [EncoderLayer(h, d_k, d_v, d_model, d_ff, rate) for _ in range(n)]
-        self.Embedding = Embedding(vocab_size, d_model, input_length=sequence_length)
+        self.Embedding = Embedding(vocab_size, d_model)
     def call(self, input_sentence, padding_mask, training):
         # Expected output shape = (batch_size, sequence_length, d_model)
         x = self.Embedding(input_sentence)
@@ -78,3 +78,41 @@ class Encoder(Layer):
             x = layer(x, padding_mask, training)
 
         return x
+
+
+if __name__ == "__main__":
+    # Define the hyperparameters
+    vocab_size = 1000
+    sequence_length = 100
+    h = 8
+    d_k = 64
+    d_v = 64
+    d_model = 512
+    d_ff = 2048
+    n = 6
+    rate = 0.0
+
+    # Create an encoder
+    encoder = Encoder(vocab_size, sequence_length, h, d_k, d_v, d_model, d_ff, n, rate)
+
+    # Create a dummy input
+    input_sentence = tf.random.uniform((64, 100),maxval = vocab_size, dtype=tf.int32)
+    padding_mask = tf.random.uniform((64, 100,100),maxval = 2, dtype=tf.int32)
+    padding_mask = tf.cast(padding_mask, tf.float32)
+    # Pass the input through the encoder
+    output = encoder(input_sentence, padding_mask, training=True)
+
+    # Print the shape of the output
+    print(output.shape)  # Expected output shape: (batch_size, sequence_length, d_model)
+
+    input_sentence = tf.random.uniform((64, 200),maxval = vocab_size, dtype=tf.int32)
+    padding_mask = tf.random.uniform((64, 200,200),maxval = 2, dtype=tf.int32)
+    padding_mask = tf.cast(padding_mask, tf.float32)
+
+    # Pass the input through the encoder
+    output = encoder(input_sentence, padding_mask, training=True)
+
+    # Print the shape of the output
+    print(output.shape)  # Expected output shape: (batch_size, sequence_length, d_model)
+
+    print("transformer can work with sentences of different lengths !")
