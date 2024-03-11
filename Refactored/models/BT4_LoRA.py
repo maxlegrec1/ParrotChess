@@ -1486,12 +1486,17 @@ class TFProcess:
         q_a = tf.keras.layers.Dense(
             8, name=name+"/wq_a", kernel_initializer="glorot_normal")(inputs)
         q_b = tf.keras.layers.Dense(
-            1024, name=name+"/wq_b", kernel_initializer="glorot_normal")(q_a)
+            d_model, name=name+"/wq_b", kernel_initializer="glorot_normal")(q_a)
         q = q+q_b
         k = tf.keras.layers.Dense(
             d_model, name=name+"/wk", kernel_initializer="glorot_normal",trainable = False)(inputs)
         v = tf.keras.layers.Dense(
             d_model, name=name+"/wv", kernel_initializer=initializer,trainable = False)(inputs)
+        v_a = tf.keras.layers.Dense(
+            8, name=name+"/wv_a", kernel_initializer="glorot_normal")(inputs)
+        v_b = tf.keras.layers.Dense(
+            d_model, name=name+"/wv_b", kernel_initializer="glorot_normal")(v_a)
+        v = v+v_b
 
         # split q, k and v into smaller vectors of size "depth" -- one for each head in multi-head attention
         batch_size = tf.shape(q)[0]
@@ -1664,7 +1669,7 @@ class TFProcess:
         def policy_head(name, activation=None, depth=None, opponent=False):
             if depth is None:
                 depth = self.policy_d_model
-
+            tf.print(f"depth = {depth}")
             # reverse the tokens along the square (second) dimension to get the opponent's perspective
             tokens = tf.reverse(policy_tokens, axis=[
                 1]) if opponent else policy_tokens
@@ -1672,9 +1677,20 @@ class TFProcess:
             # create queries and keys for policy self-attention
             queries = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
                                             name=name+"/attention/wq",trainable = False)(tokens)
+            queries_a = tf.keras.layers.Dense(8, kernel_initializer="glorot_normal",
+                                            name=name+"/attention/wq_a")(tokens)
+            queries_b = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
+                                            name=name+"/attention/wq_b")(queries_a)
+            queries = queries + queries_b
+
             keys = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
                                          name=name+"/attention/wk",trainable = False)(tokens)
-
+            keys_a = tf.keras.layers.Dense(8, kernel_initializer="glorot_normal",
+                                            name=name+"/attention/wk_a")(tokens)
+            keys_b = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
+                                            name=name+"/attention/wk_b")(keys_a)
+            
+            keys = keys+keys_b
             # POLICY SELF-ATTENTION: self-attention weights are interpreted as from->to policy
             # Bx64x64 (from 64 queries, 64 keys)
             matmul_qk = tf.matmul(queries, keys, transpose_b=True)
@@ -1981,6 +1997,7 @@ def make_map():
 
 def create_model(*args,**kwargs):
     import yaml
+    from Refactored.models.BT4 import create_model as BT4_create_model
     with open("BT4.yaml") as file:
         cfg = yaml.safe_load(file)
 
@@ -1996,6 +2013,16 @@ def create_model(*args,**kwargs):
     #print(outputs.shape)
 
     model = tf.keras.Model(inputs = [input_var1,input_var2],outputs = outputs)
+
+    BT4 = BT4_create_model()
+    BT4.load_weights("BT4_finetuned.h5")
+    for weights_BT4 in BT4.trainable_variables:
+        for weights_model in model.variables:
+            if weights_model.name == weights_BT4.name:
+                weights_model.assign(weights_BT4)
+                print(f"weights assigned for {weights_model.name}")
+    del BT4
+
 
     #model.summary()
     return model

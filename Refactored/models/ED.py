@@ -1975,7 +1975,7 @@ def make_map():
 
 def create_model(*args,**kwargs):
     import yaml
-    from Decoder import Decoder
+    from models.Decoder import Decoder
     with open("ED.yaml") as file:
         cfg = yaml.safe_load(file)
 
@@ -1985,7 +1985,6 @@ def create_model(*args,**kwargs):
 
     input_var1 = tf.keras.Input((8, 8, 102))
     input_var2 = tf.keras.Input((8, 8, 2))
-    pol = tf.keras.Input((1958,1024))
     encoder_outputs = model_all_heads([input_var1,input_var2])
 
     h = 32
@@ -1997,22 +1996,38 @@ def create_model(*args,**kwargs):
     rate = 0.0
 
     decoder = Decoder(h, d_k, d_v, d_model, d_ff, n, rate)
+    pol_enc = get_position_encoding()
+    outputs = decoder(pol_enc, encoder_outputs, training=True)
 
-    outputs = decoder(pol, encoder_outputs, training=True)
+    outputs = tf.keras.layers.Dense(1,kernel_initializer="glorot_normal")(outputs)
+    outputs = tf.reshape(outputs,[-1,1858])
     #print(outputs.shape)
 
-    model = tf.keras.Model(inputs = [input_var1,input_var2,pol],outputs = outputs)
+    model = tf.keras.Model(inputs = [input_var1,input_var2],outputs = outputs)
 
     #model.summary()
     return model
 
+def get_position_encoding(seq_len = 1858, d = 1024, n=10000):
+        P = np.zeros((256,seq_len, d))
+        for k in range(seq_len):
+            for i in np.arange(int(d/2)):
+                denominator = np.power(n, 2*i/d)
+                P[:,k, 2*i] = np.sin(k/denominator)
+                P[:,k, 2*i+1] = np.cos(k/denominator)
+        return P
+
+
 
 if __name__=='__main__':
+    GPU_ID = 0
+    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[GPU_ID], 'GPU')
+    tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
+
     model = create_model()
     model.summary()
 
-    input1 = tf.zeros((2,8,8,102))
-    input2 = tf.zeros((2,8,8,2))
-    pol = tf.zeros((2,1958,1024))
-    output = model([input1,input2,pol])
+    input1 = tf.zeros((8,8,8,102))
+    input2 = tf.zeros((8,8,8,2))
+    output = model([input1,input2])
     print(output.shape)

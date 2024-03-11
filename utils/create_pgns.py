@@ -13,12 +13,12 @@ def uniform_density(elo,elo_min = 2500, elo_max = 3000):
 
 
 
-f = open("human2.pgn")
+f = open("pros.pgn")
 samples = []
 
-'''
+
 #use the john von neumann algorithm to sample uniformly from the distribution
-for i in tqdm(range(1000000)):
+for i in tqdm(range(10000)):
     pgn = chess.pgn.read_game(f)
     elo = int(pgn.headers["WhiteElo"])
 
@@ -66,15 +66,16 @@ print(np.mean(sample))
 #plt.plot(x, best_fit.pdf(x, *best_params), 'r-', label='Best fit')
 #plt.legend()
 #plt.show()
-Best fit:  weibull_min
-Parameters:  (1.0418159053857048, 2499.9497300298544, 139.5627884452257)
-'''
+#Best fit:  weibull_min
+#Parameters:  (1.0418159053857048, 2499.9497300298544, 139.5627884452257)
+
 samples = []
 #use the john von neumann algorithm to sample uniformly from the distribution
-for i in tqdm(range(1000000)):
+for i in tqdm(range(10000)):
     pgn = chess.pgn.read_game(f)
     elo = int(pgn.headers["WhiteElo"])
-    if random.random() < uniform_density(elo)/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+    #if random.random() < uniform_density(elo)/(4*best_fit.pdf(elo,*best_params)):
+    if random.random() < 1:
         samples.append(elo)
 sample = np.array(samples)
 print(len(samples))

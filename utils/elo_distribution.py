@@ -2,7 +2,7 @@ import chess.pgn
 import chess
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-with open("human2.pgn") as f:
+with open("pros.pgn") as f:
     elo_arrays = []
     game_lengths = []
     for i in tqdm(range(1000000)):

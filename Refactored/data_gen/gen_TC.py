@@ -84,6 +84,7 @@ def generate_batch(batch_size,in_pgn):
                 except:
                     elo = 1500
                 if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                #if len(moves)>=11:
                     del start_index
                     start_index = random.randint(10,len(moves)-1)
                     #make the start_index first moves

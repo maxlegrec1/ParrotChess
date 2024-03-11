@@ -33,33 +33,20 @@ class EncoderLayer(Layer):
     def __init__(self, h, d_k, d_v, d_model, d_ff, rate, **kwargs):
         super(EncoderLayer, self).__init__(**kwargs)
         self.multihead_attention = tf.keras.layers.MultiHeadAttention(h, d_k)
-        self.multihead_attention2 = tf.keras.layers.MultiHeadAttention(h, d_k)
         self.dropout1 = Dropout(rate)
         self.add_norm1 = AddNormalization()
-        self.feed_forward = FeedForward(d_ff, d_model)
-        self.dropout2 = Dropout(rate)
         self.add_norm2 = AddNormalization()
+        self.feed_forward = FeedForward(d_ff, d_model)
 
     def call(self, x, encoder_output, training):
-        # Multi-head attention layer
-        multihead_output = self.multihead_attention(x, x,training=training)
-        # Expected output shape = (batch_size, sequence_length, d_model)
-        # Add in a dropout layer
-        multihead_output = self.dropout1(multihead_output, training=training)
 
-        # Followed by an Add & Norm layer
+        multihead_output = self.multihead_attention(x, encoder_output, encoder_output, training=training)
+        # Expected output shape = (batch_size, sequence_length, d_model)
+
         addnorm_output = self.add_norm1(x, multihead_output)
-
-        multihead_output2 = self.multihead_attention2(addnorm_output, encoder_output, encoder_output, training=training)
-        # Expected output shape = (batch_size, sequence_length, d_model)
-
-        addnorm_output2 = self.add_norm1(x, multihead_output2)
         # Followed by a fully connected layer
-        feedforward_output = self.feed_forward(addnorm_output2)
+        feedforward_output = self.feed_forward(addnorm_output)
         # Expected output shape = (batch_size, sequence_length, d_model)
-
-        # Add in another dropout layer
-        feedforward_output = self.dropout2(feedforward_output, training=training)
 
         # Followed by another Add & Norm layer
         return self.add_norm2(addnorm_output, feedforward_output)
