@@ -31,8 +31,7 @@ def train_step(batch,model,gradient_acc_steps = 1):
                 loss1 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
                 loss2 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(value_true),logits=value_pred)
                 
-
-                loss1+loss2
+                loss = loss1+loss2
 
                 gradients = tape.gradient(loss, model.trainable_variables)
         
@@ -58,15 +57,12 @@ def train_step(batch,model,gradient_acc_steps = 1):
                 
                 accum_ops = [accum_vars[i].assign_add(grad) for i, grad in enumerate(gradients)]
 
-                
         accum_vars, _ = tf.clip_by_global_norm(accum_vars, 10000)
 
         model.optimizer.apply_gradients(zip(accum_vars, model.trainable_variables))
 
         #tf.print(mask.dtype,y_pred.dtype)
         lm = tf.reduce_sum(mask[i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps]*tf.keras.layers.Softmax()(y_pred),axis=-1)
-
-
 
         #tf.print(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1))
         acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true[i*y_true.shape[0]//gradient_acc_steps:(i+1)*y_true.shape[0]//gradient_acc_steps],axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
