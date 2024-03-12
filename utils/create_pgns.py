@@ -20,6 +20,7 @@ samples = []
 #use the john von neumann algorithm to sample uniformly from the distribution
 for i in tqdm(range(10000)):
     pgn = chess.pgn.read_game(f)
+    print(pgn.headers["Result"])
     elo = int(pgn.headers["WhiteElo"])
 
     samples.append(elo)

@@ -8,6 +8,7 @@ import models.MiniResTCEvaluater as MiniResTCEvaluater
 import models.BT4 as BT4
 import models.BT5 as BT5
 import models.BT4_LoRA as BT4_LoRA
+import models.BT4_LoRA_value as BT4_LoRA_value
 import models.ED as ED
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
@@ -19,6 +20,7 @@ import data_gen.default_gen as default_gen
 import data_gen.gen_castling as gen_castling
 import data_gen.uniform_gen as uniform_gen
 import data_gen.gen_TC as gen_TC
+import data_gen.gen_TC_value as gen_TC_value
 import data_gen.gen_TC_thinker as gen_TC_thinker
 import data_gen.gen_TC_par as gen_TC_par
 def from_string_to_fun():
@@ -39,6 +41,8 @@ def from_string_to_fun():
 
         "BT4_LoRA": BT4_LoRA.create_model,
 
+        "BT4_LoRA_value": BT4_LoRA_value.create_model,
+
         "BT5": BT5.create_model,
 
         "ED": ED.create_model,
@@ -58,4 +62,6 @@ def from_string_to_fun():
         "gen_TC_par" : gen_TC_par.data_gen,
 
         "gen_TC" : gen_TC.data_gen,
+
+        "gen_TC_value" : gen_TC_value.data_gen,
     }
