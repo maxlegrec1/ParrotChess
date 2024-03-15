@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 import tensorflow as tf
 from utils.pgn_to_input_data import list_uci_to_input
 from Refactored.data_gen.gen_TC import policy_index, mirror_uci_string
-from Refactored.models.BT4 import create_model
+from Refactored.models.BT4_LoRA_value import create_model
 def update(MOVE_LIST,driver):
     i = len(MOVE_LIST)+1
     if i==1:
@@ -63,13 +63,13 @@ if __name__ == "__main__":
     MOVE_LIST = None
     GAME_ID = None
     #load model
-
+    '''
     GPU_ID = 1
     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[GPU_ID], 'GPU')
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
-
+    '''
     model = create_model()
-    model.load_weights("/media/maxime/Crucial X8/GitRefactored/ParrotChess/model_2024-02-23_09-33-32_960.h5")
+    model.load_weights("model_value.h5")
     #model.load_weights("F:\GitRefactored\ParrotChess\model_2024-02-10_11-07-25_160.h5")
 
     print(CURR_STATE)
@@ -104,13 +104,14 @@ if __name__ == "__main__":
                 X = list_uci_to_input(MOVE_LIST,ELO,"300")
                 #do the inference here
                 Y = model(X)
-                best = tf.argmax(Y,axis=-1)
+                value = Y['value']
+                best = tf.argmax(Y['policy'],axis=-1)
                 move_id = best.numpy()[0]
                 move = policy_index[move_id]
                 if len(MOVE_LIST)%2 == 1:
                     print("black")
                     move = mirror_uci_string(move)
-                print(move)
+                print(move,value[0].numpy())
 
             if len(driver.current_url.split("/")[-1]) <=5:
                 print("Back to the main page")
