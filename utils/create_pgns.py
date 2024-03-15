@@ -11,21 +11,31 @@ def uniform_density(elo,elo_min = 2500, elo_max = 3000):
     else:
         return 0
 
+import codecs
 
-
-f = open("pros.pgn")
+f = codecs.open("/media/maxime/Crucial X8/Gigachad/engine.pgn","r", "ISO-8859-1")
 samples = []
+whitewins=0
+draws=0
+blackwins=0
 
 
 #use the john von neumann algorithm to sample uniformly from the distribution
-for i in tqdm(range(10000)):
+for i in tqdm(range(50000)):
     pgn = chess.pgn.read_game(f)
-    print(pgn.headers["Result"])
+
+    if pgn.headers["Result"]=="1-0":
+        whitewins+=1
+    elif pgn.headers["Result"]=="0-1":
+        blackwins+=1
+    else:
+        draws+=1
+
     elo = int(pgn.headers["WhiteElo"])
 
     samples.append(elo)
 sample = np.array(samples)
-
+print(whitewins,draws,blackwins)
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm, lognorm, expon, gamma, weibull_min, skewnorm,exponweib

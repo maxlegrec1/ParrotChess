@@ -59,7 +59,7 @@ class Gating(tf.keras.layers.Layer):
                                     if not self.additive else None,
                                     initializer=tf.constant_initializer(
                                         self.init_value),
-                                    trainable=True)
+                                    trainable=False)
 
     def call(self, inputs):
         return tf.add(inputs, self.gate) if self.additive else tf.multiply(
@@ -141,6 +141,7 @@ class Metric:
 
 class TFProcess:
     def __init__(self, cfg):
+        self.trainable = True
         self.cfg = cfg
         #self.net = Net()
         self.root_dir = os.path.join(self.cfg["training"]["path"],
@@ -1481,22 +1482,22 @@ class TFProcess:
         # inputs b, 64, sz
 
         q = tf.keras.layers.Dense(
-            d_model, name=name+"/wq", kernel_initializer="glorot_normal",trainable = False)(inputs)
+            d_model, name=name+"/wq", kernel_initializer="glorot_normal",trainable = self.trainable)(inputs)
         
         q_a = tf.keras.layers.Dense(
             8, name=name+"/wq_a", kernel_initializer="glorot_normal")(inputs)
         q_b = tf.keras.layers.Dense(
             d_model, name=name+"/wq_b", kernel_initializer="glorot_normal")(q_a)
-        q = q+q_b
+        q = q
         k = tf.keras.layers.Dense(
-            d_model, name=name+"/wk", kernel_initializer="glorot_normal",trainable = False)(inputs)
+            d_model, name=name+"/wk", kernel_initializer="glorot_normal",trainable = self.trainable)(inputs)
         v = tf.keras.layers.Dense(
-            d_model, name=name+"/wv", kernel_initializer=initializer,trainable = False)(inputs)
+            d_model, name=name+"/wv", kernel_initializer=initializer,trainable = self.trainable)(inputs)
         v_a = tf.keras.layers.Dense(
             8, name=name+"/wv_a", kernel_initializer="glorot_normal")(inputs)
         v_b = tf.keras.layers.Dense(
             d_model, name=name+"/wv_b", kernel_initializer="glorot_normal")(v_a)
-        v = v+v_b
+        v = v
 
         # split q, k and v into smaller vectors of size "depth" -- one for each head in multi-head attention
         batch_size = tf.shape(q)[0]
@@ -1530,10 +1531,10 @@ class TFProcess:
             activation = self.ffn_activation
 
         dense1 = tf.keras.layers.Dense(
-            dff, name=name + "/dense1", kernel_initializer=initializer, activation=activation,trainable = False)(inputs)
+            dff, name=name + "/dense1", kernel_initializer=initializer, activation=activation,trainable = self.trainable)(inputs)
 
         out = tf.keras.layers.Dense(
-            emb_size, name=name + "/dense2", kernel_initializer=initializer,trainable = False)(dense1)
+            emb_size, name=name + "/dense2", kernel_initializer=initializer,trainable = self.trainable)(dense1)
         return out
 
     def encoder_layer(self, inputs, emb_size: int, d_model: int, num_heads: int, dff: int, name: str, training: bool):
@@ -1571,17 +1572,17 @@ class TFProcess:
 
     def smolgen_weights(self, inputs, heads: int, hidden_channels: int, hidden_sz: int, gen_sz: int, name: str, activation="swish"):
         compressed = tf.keras.layers.Dense(
-            hidden_channels, name=name+"/compress", use_bias=False,trainable = False)(inputs)
+            hidden_channels, name=name+"/compress", use_bias=False,trainable = self.trainable)(inputs)
         compressed = tf.reshape(compressed, [-1, 64 * hidden_channels])
         hidden = tf.keras.layers.Dense(
-            hidden_sz, name=name+"/hidden1_dense", activation=activation,trainable = False)(compressed)
+            hidden_sz, name=name+"/hidden1_dense", activation=activation,trainable = self.trainable)(compressed)
 
         hidden = tf.keras.layers.LayerNormalization(
             name=name+"/hidden1_ln",trainable = False)(hidden)
         gen_from = tf.keras.layers.Dense(
-            heads * gen_sz, name=name+"/gen_from", activation=activation,trainable = False)(hidden)
+            heads * gen_sz, name=name+"/gen_from", activation=activation,trainable = self.trainable)(hidden)
         gen_from = tf.keras.layers.LayerNormalization(
-            name=name+"/gen_from_ln", center=True,trainable = False)(gen_from)
+            name=name+"/gen_from_ln", center=True,trainable = self.trainable)(gen_from)
         gen_from = tf.reshape(gen_from, [-1, heads, gen_sz])
 
         out = self.smol_weight_gen_dense(gen_from)
@@ -1593,7 +1594,7 @@ class TFProcess:
         # do some input processing
         if self.use_smolgen:
             self.smol_weight_gen_dense = tf.keras.layers.Dense(
-                64 * 64, name=name+"smol_weight_gen", use_bias=False,trainable = False)
+                64 * 64, name=name+"smol_weight_gen", use_bias=False,trainable = self.trainable)
 
         if self.embedding_style == "new":
             inputs = tf.cast(inputs, self.model_dtype)
@@ -1607,7 +1608,7 @@ class TFProcess:
             pos_info_flat = tf.reshape(pos_info, [-1, 64 * 12])
 
             pos_info_processed = tf.keras.layers.Dense(
-                64*self.embedding_dense_sz, name=name+"embedding/preprocess",trainable = False)(pos_info_flat)
+                64*self.embedding_dense_sz, name=name+"embedding/preprocess",trainable = self.trainable)(pos_info_flat)
             pos_info = tf.reshape(pos_info_processed,
                                   [-1, 64, self.embedding_dense_sz])
             flow = tf.concat([flow, pos_info], axis=2)
@@ -1615,7 +1616,7 @@ class TFProcess:
             # square embedding
             flow = tf.keras.layers.Dense(self.embedding_size, kernel_initializer="glorot_normal",
                                          kernel_regularizer=self.l2reg, activation=self.DEFAULT_ACTIVATION,
-                                         name=name+"embedding",trainable = False)(flow)
+                                         name=name+"embedding",trainable = self.trainable)(flow)
             flow = tf.keras.layers.LayerNormalization(
                 name=name+"embedding/ln")(flow)
             flow = ma_gating(flow, name=name+'embedding')
@@ -1664,7 +1665,7 @@ class TFProcess:
 
         policy_tokens = tf.keras.layers.Dense(self.pol_embedding_size, kernel_initializer="glorot_normal",
                                               kernel_regularizer=self.l2reg, activation=self.DEFAULT_ACTIVATION,
-                                              name=name+"policy/embedding",trainable = False)(flow_)
+                                              name=name+"policy/embedding",trainable = self.trainable)(flow_)
 
         def policy_head(name, activation=None, depth=None, opponent=False):
             if depth is None:
@@ -1676,21 +1677,21 @@ class TFProcess:
 
             # create queries and keys for policy self-attention
             queries = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
-                                            name=name+"/attention/wq",trainable = False)(tokens)
+                                            name=name+"/attention/wq",trainable = self.trainable)(tokens)
             queries_a = tf.keras.layers.Dense(8, kernel_initializer="glorot_normal",
                                             name=name+"/attention/wq_a")(tokens)
             queries_b = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
                                             name=name+"/attention/wq_b")(queries_a)
-            queries = queries + queries_b
+            queries = queries 
 
             keys = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
-                                         name=name+"/attention/wk",trainable = False)(tokens)
+                                         name=name+"/attention/wk",trainable = self.trainable)(tokens)
             keys_a = tf.keras.layers.Dense(8, kernel_initializer="glorot_normal",
                                             name=name+"/attention/wk_a")(tokens)
             keys_b = tf.keras.layers.Dense(depth, kernel_initializer="glorot_normal",
                                             name=name+"/attention/wk_b")(keys_a)
             
-            keys = keys+keys_b
+            keys = keys
             # POLICY SELF-ATTENTION: self-attention weights are interpreted as from->to policy
             # Bx64x64 (from 64 queries, 64 keys)
             matmul_qk = tf.matmul(queries, keys, transpose_b=True)
@@ -1705,7 +1706,7 @@ class TFProcess:
             promotion_keys = keys[:, -8:, :]
             # queen, rook, bishop, knight order
             promotion_offsets = tf.keras.layers.Dense(4, kernel_initializer="glorot_normal",
-                                                      name=name+"/attention/ppo", use_bias=False,trainable = False)(promotion_keys)
+                                                      name=name+"/attention/ppo", use_bias=False,trainable = self.trainable)(promotion_keys)
             promotion_offsets = tf.transpose(
                 promotion_offsets, perm=[0, 2, 1]) * dk  # Bx4x8
             # knight offset is added to the other three
@@ -2013,7 +2014,7 @@ def create_model(*args,**kwargs):
     #print(outputs.shape)
 
     model = tf.keras.Model(inputs = [input_var1,input_var2],outputs = outputs)
-
+    """
     BT4 = BT4_create_model()
     BT4.load_weights("BT4_finetuned.h5")
     for weights_BT4 in BT4.trainable_variables:
@@ -2021,7 +2022,7 @@ def create_model(*args,**kwargs):
             if weights_model.name == weights_BT4.name:
                 weights_model.assign(weights_BT4)
                 print(f"weights assigned for {weights_model.name}")
-    del BT4
+    del BT4"""
 
 
     #model.summary()
@@ -2029,6 +2030,7 @@ def create_model(*args,**kwargs):
 
 
 if __name__=='__main__':
+
     model = create_model()
     model.summary()
     input1 = tf.zeros((1,8,8,102))

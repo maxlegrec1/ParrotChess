@@ -9,6 +9,7 @@ from scipy.stats import weibull_min
 import random
 import ray
 import time
+import codecs
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -73,7 +74,7 @@ def generate_batch(batch_size,in_pgn):
     xs = []
     ys = []
     vs = []
-    with open(in_pgn) as f:
+    with codecs.open(in_pgn,"r", "ISO-8859-1") as f:
         while True:
             #load game
             del pgn
@@ -85,8 +86,8 @@ def generate_batch(batch_size,in_pgn):
                     elo = int(pgn.headers["WhiteElo"])
                 except:
                     elo = 1500
-                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
-                #if len(moves)>=11:
+                #if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                if len(moves)>=11:
                     del start_index
                     start_index = random.randint(10,len(moves)-1)
                     #make the start_index first moves
@@ -175,12 +176,16 @@ def get_board(elo,board,real_move,TC,move_number,value):
 
     TC = TC / 120
 
-    if value =='1-0':
+    if value =='1-0' and color==1:
         value = np.array([1,0,0],dtype=np.float32)
-    elif value =='0-1':
+    elif value =='0-1' and color ==1:
         value = np.array([0,0,1],dtype=np.float32)
     elif value =='1/2-1/2':
         value = np.array([0,1,0],dtype=np.float32)
+    elif value =='0-1' and color ==0:
+        value = np.array([1,0,0],dtype=np.float32)
+    elif value =='1-0' and color ==0:
+        value = np.array([0,0,1],dtype=np.float32)
     else:
         value = np.array([0,1,0],dtype=np.float32)
         #if value is a strong it will return an error
@@ -240,7 +245,9 @@ def get_board_data(pgn,board,real_move,move_number):
         elo = pgn.headers["WhiteElo"]
     else:
         elo = pgn.headers["BlackElo"]
-    TC = pgn.headers['TimeControl']
+    
+    #TC = pgn.headers['TimeControl']
+    TC = "180"
     value = pgn.headers['Result']
 
     return get_board(elo,board,real_move,TC,move_number,value)
@@ -601,12 +608,13 @@ class data_gen():
 def test():
     params = {
         'batch_size': 256,
-        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/human2.pgn'
+        'path_pgn': '/media/maxime/Crucial X8/Gigachad/engine.pgn'
     }
     gen = data_gen(params)
     for i in range(int(1e20)):
         x,y,v = gen.get_batch()
-        print(i, x[0].shape,x[1].shape,v.shape)
+        
+        print(i, x[0].shape,x[1].shape)
 
 
 @ray.remote(num_cpus=1)

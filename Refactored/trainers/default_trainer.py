@@ -31,7 +31,7 @@ def train_step(batch,model,gradient_acc_steps = 1):
                 loss1 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
                 loss2 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(value_true),logits=value_pred)
                 
-                loss = loss1+loss2
+                loss = loss1 + loss2
 
                 gradients = tape.gradient(loss, model.trainable_variables)
         
@@ -119,7 +119,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
 
             accuracy = accuracy / (step + 1) * step + acc / (step + 1)
 
-            value = value / (step + 1) * step + acc / (step + 1)
+            value = value / (step + 1) * step + value_acc / (step + 1)
 
             total_steps += 1
 
