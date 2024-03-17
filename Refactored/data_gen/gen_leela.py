@@ -7,8 +7,11 @@ import tensorflow as tf
 from tqdm import tqdm
 from scipy.stats import weibull_min
 import random
+<<<<<<< HEAD
 import os 
 import sys
+=======
+>>>>>>> a8805d71afe8e529f9c5673a8db3e86dd3e49f4f
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -764,6 +767,7 @@ _uci_to_idx_bc['e8g8'], _uci_to_idx_bc['e8h8'] = _uci_to_idx_bc['e8h8'], _uci_to
 _uci_to_idx_bc['e8c8'], _uci_to_idx_bc['e8a8'] = _uci_to_idx_bc['e8a8'], _uci_to_idx_bc['e8c8']
 
 uci_to_idx = [_uci_to_idx_wn, _uci_to_idx_wc, _uci_to_idx_bn, _uci_to_idx_bc]
+<<<<<<< HEAD
 
 
 import sys
@@ -784,6 +788,16 @@ pos = tf.expand_dims(pos,axis=0)
 Y = bt4(pos)['value_winner']
 print(Y[0].numpy())
 exit()
+=======
+'''
+lb = LeelaBoard()
+lb.push_uci('c2c4')
+lb.push_uci('b8c6')
+pos = lb.lcz_features()
+for i in range(len(pos)):
+    print(i,pos[i])
+exit()'''
+>>>>>>> a8805d71afe8e529f9c5673a8db3e86dd3e49f4f
 # lb.push_uci('b8c6')
 # saved_planes = planes
 # planes = lb.features()

@@ -69,7 +69,7 @@ if __name__ == "__main__":
     GPU_ID = 0
     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[GPU_ID], 'GPU')
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
-
+    
     model = create_model()
     model.load_weights("BT4_LoRA.h5")
     bt4 = create_bt4()
