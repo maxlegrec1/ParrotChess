@@ -242,9 +242,15 @@ def get_board(elo,board,real_move,TC,move_number,value):
     
 def get_board_data(pgn,board,real_move,move_number):
     if board.turn == chess.WHITE:
-        elo = pgn.headers["WhiteElo"]
+        try:
+            elo = pgn.headers["WhiteElo"]
+        except:
+            elo = '3000'
     else:
-        elo = pgn.headers["BlackElo"]
+        try:
+            elo = pgn.headers["BlackElo"]
+        except:
+            elo = '3000'
     
     #TC = pgn.headers['TimeControl']
     TC = "180"

@@ -8,7 +8,9 @@ from selenium.webdriver.common.by import By
 import tensorflow as tf
 from utils.pgn_to_input_data import list_uci_to_input
 from Refactored.data_gen.gen_TC import policy_index, mirror_uci_string
-from Refactored.models.BT4 import create_model
+from Refactored.models.BT4_LoRA import create_model
+from Refactored.models.bt4_real import create_model as create_bt4
+from utils.ustotheirs import ustotheirs
 def update(MOVE_LIST,driver):
     i = len(MOVE_LIST)+1
     if i==1:
@@ -64,12 +66,13 @@ if __name__ == "__main__":
     GAME_ID = None
     #load model
 
-    GPU_ID = 1
+    GPU_ID = 0
     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[GPU_ID], 'GPU')
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
 
     model = create_model()
-    model.load_weights("/media/maxime/Crucial X8/GitRefactored/ParrotChess/model_2024-02-23_09-33-32_960.h5")
+    model.load_weights("BT4_LoRA.h5")
+    bt4 = create_bt4()
     #model.load_weights("F:\GitRefactored\ParrotChess\model_2024-02-10_11-07-25_160.h5")
 
     print(CURR_STATE)
@@ -101,16 +104,18 @@ if __name__ == "__main__":
                 MOVE_LIST.append(new_move)
                 print(MOVE_LIST) 
             if len(MOVE_LIST)>=8 and new_move!=None:
-                X = list_uci_to_input(MOVE_LIST,ELO,"300")
+                X,mask = list_uci_to_input(MOVE_LIST,ELO,"300")
                 #do the inference here
                 Y = model(X)
-                best = tf.argmax(Y,axis=-1)
+                #print(ustotheirs(X[0])[0,108])
+                Y_bt4 = bt4(ustotheirs(X[0]))
+                best = tf.argmax(0.60*(mask+Y_bt4['policy'])+0.4*Y,axis=-1)
                 move_id = best.numpy()[0]
                 move = policy_index[move_id]
                 if len(MOVE_LIST)%2 == 1:
                     print("black")
                     move = mirror_uci_string(move)
-                print(move)
+                print(move,Y_bt4['value_winner'].numpy())
 
             if len(driver.current_url.split("/")[-1]) <=5:
                 print("Back to the main page")

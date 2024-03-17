@@ -6,9 +6,10 @@ import time
 import csv
 import wandb
 import os
-
-
-
+import sys
+sys.path.append(os.getcwd())
+from utils.ustotheirs import ustotheirs
+from Refactored.models.bt4_real import create_model
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
@@ -16,22 +17,23 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 #custom training loop
 @tf.function
-def train_step(batch,model,gradient_acc_steps = 1):
+def train_step(batch,model,bt4,gradient_acc_steps = 1):
     x,y_true,value_true = batch
     #all non negative values should be 1
     mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
     y_true = tf.nn.relu(y_true)
+    bt4_pol = tf.stop_gradient(bt4(ustotheirs(x[0]))['policy']*mask)
     if gradient_acc_steps==1:
         with tf.GradientTape() as tape:
                 #tf.print(i)
-                y_all = model(x)
-                y_pred = y_all['policy']
-                value_pred = y_all['value']
+                y_pred = 0.3*model(x) +0.7*bt4_pol
+                #y_pred = y_all['policy']
+                #value_pred = y_all['value_winner']
                 #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
                 loss1 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred)
-                loss2 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(value_true),logits=value_pred)
+                #loss2 =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(value_true),logits=value_pred)
                 
-                loss = loss1 + loss2
+                loss = loss1 
 
                 gradients = tape.gradient(loss, model.trainable_variables)
         
@@ -40,9 +42,10 @@ def train_step(batch,model,gradient_acc_steps = 1):
 
         lm = tf.reduce_sum(mask*tf.keras.layers.Softmax()(y_pred),axis=-1)
 
-        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred,axis=-1)),tf.float32),axis=-1)
+        acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(y_true,axis=-1),tf.argmax(y_pred*mask,axis=-1)),tf.float32),axis=-1)
 
-        value_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(value_true,axis=-1),tf.argmax(value_pred,axis=-1)),tf.float32),axis=-1)
+        #value_acc = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(value_true,axis=-1),tf.argmax(value_pred,axis=-1)),tf.float32),axis=-1)
+        value_acc = 0
 
     else:
 
@@ -82,6 +85,8 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
     if resume_id == None:
         id = wandb.util.generate_id()
         wandb.init(project='owt', id= id, resume = 'allow')
+        model.load_weights("BT4_LoRA.h5")
+        bt4 = create_model()
     else:
         id = resume_id
         wandb.init(project='owt', id= id, resume = 'allow')
@@ -110,7 +115,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
             
 
 
-            loss,lm,acc,value_acc = train_step(batch, model)
+            loss,lm,acc,value_acc = train_step(batch, model,bt4)
             del batch
             loss = tf.reduce_mean(loss)
             lm = tf.reduce_mean(lm)

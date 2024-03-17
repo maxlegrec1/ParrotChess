@@ -10,6 +10,7 @@ import models.BT5 as BT5
 import models.BT4_LoRA as BT4_LoRA
 import models.BT4_LoRA_value as BT4_LoRA_value
 import models.ED as ED
+import models.bt4_real as bt4_real
 ########### TRAINERS
 import trainers.default_trainer as default_trainer
 
@@ -38,6 +39,8 @@ def from_string_to_fun():
         "MiniResTCEvaluater": MiniResTCEvaluater.create_model,
 
         "BT4": BT4.create_model,
+
+        "bt4_real": bt4_real.create_model,
 
         "BT4_LoRA": BT4_LoRA.create_model,
 
