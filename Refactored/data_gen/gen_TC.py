@@ -3,12 +3,12 @@ import chess.pgn
 import chess
 import numpy as np
 from typing import Tuple, List
-import tensorflow as tf
 from tqdm import tqdm
 from scipy.stats import weibull_min
 import random
 import ray
 import time
+import codecs
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -71,7 +71,7 @@ def generate_batch(batch_size,in_pgn):
     x_start = []
     xs = []
     ys = []
-    with open(in_pgn) as f:
+    with codecs.open(in_pgn,'r',"ISO-8859-1") as f:
         while True:
             #load game
             del pgn
@@ -83,8 +83,8 @@ def generate_batch(batch_size,in_pgn):
                     elo = int(pgn.headers["WhiteElo"])
                 except:
                     elo = 1500
-                if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
-                #if len(moves)>=11:
+                #if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                if len(moves)>=11:
                     del start_index
                     start_index = random.randint(10,len(moves)-1)
                     #make the start_index first moves
@@ -221,10 +221,19 @@ def get_board(elo,board,real_move,TC,move_number):
     
 def get_board_data(pgn,board,real_move,move_number):
     if board.turn == chess.WHITE:
-        elo = pgn.headers["WhiteElo"]
+        try:
+            elo = pgn.headers["WhiteElo"]
+        except:
+            elo = '3000'
     else:
-        elo = pgn.headers["BlackElo"]
-    TC = pgn.headers['TimeControl']
+        try:
+            elo = pgn.headers["BlackElo"]
+        except:
+            elo = '3000'
+    try:
+        TC = pgn.headers['TimeControl']
+    except:
+        TC='300'
     return get_board(elo,board,real_move,TC,move_number)
 
 def get_x_from_board(elo,board,TC):
