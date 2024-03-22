@@ -24,7 +24,7 @@ def train_step(batch,model,gradient_acc_steps = 1):
     if gradient_acc_steps==1:
         with tf.GradientTape() as tape:
                 #tf.print(i)
-                y_pred = model(x)
+                y_pred = model(x)['policy']
                 #y_pred = y_all['policy']
                 #lm = y_all['value']
                 #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)

@@ -6,7 +6,7 @@ def parameters() -> dict:
         
         "shared_parameters" : {"batch_size" : 256, 'lr_start': 1e-5 ,'lr':5e-5, "path_pgn": "/media/maxime/Crucial X8/Gigachad/engine.pgn",'num_channels':102,'num_filters':1024,'num_residuals':6,'mini_res_channels':64},
         
-        "model" : 'BT4',
+        "model" : 'bt4_moe',
         
         "trainer" : "default_trainer",
         
