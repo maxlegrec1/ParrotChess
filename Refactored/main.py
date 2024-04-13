@@ -8,11 +8,11 @@ import sys
 cwd = os.getcwd()
 sys.path.append(cwd)
 def main():
-
+    
     GPU_ID = 0
     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[GPU_ID], 'GPU')
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[GPU_ID], True)
-
+    
     converter = from_string_to_fun()
     config_name = 'default_config'
     params = importlib.import_module('config.'+ config_name).parameters()

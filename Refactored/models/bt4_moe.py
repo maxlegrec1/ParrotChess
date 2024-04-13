@@ -9,7 +9,7 @@ sys.path.append("/media/maxime/Crucial X8/moe/lczero-training/tf/proto")
 
 
 from tf.tfprocess import TFProcess
-
+import tensorflow as tfw
 
 
 def create_model(*args,**kwargs):
@@ -21,4 +21,3 @@ def create_model(*args,**kwargs):
 
     return tfp.model
 
-#model = create_model()

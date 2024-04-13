@@ -13,7 +13,7 @@ import trainers.default_trainer as default_trainer
 ########### DATA GEN
 
 import data_gen.gen_TC as gen_TC
-
+import data_gen.gen_leela as gen_leela
 def from_string_to_fun():
     
     return {
@@ -31,4 +31,6 @@ def from_string_to_fun():
         "TC_generator" : gen_TC.data_gen,
 
         "gen_TC" : gen_TC.data_gen,
+
+        "gen_leela" : gen_leela.data_gen,
     }

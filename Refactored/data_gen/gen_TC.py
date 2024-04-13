@@ -9,6 +9,7 @@ import random
 import ray
 import time
 import codecs
+import os
 
 dic_piece = {"P" : 0, "N" : 1, "B" : 2, "R" : 3, "Q" : 4, "K" : 5, "p" : 6, "n" : 7, "b" : 8, "r" : 9, "q" : 10, "k" : 11}
 params = (3.781083215802374, 355.0827163803461, 1421.9764397854142)
@@ -71,7 +72,8 @@ def generate_batch(batch_size,in_pgn):
     x_start = []
     xs = []
     ys = []
-    with codecs.open(in_pgn,'r',"ISO-8859-1") as f:
+    #with codecs.open(in_pgn,'r',"ISO-8859-1") as f:
+    with open(in_pgn) as f:
         while True:
             #load game
             del pgn
@@ -83,10 +85,12 @@ def generate_batch(batch_size,in_pgn):
                     elo = int(pgn.headers["WhiteElo"])
                 except:
                     elo = 1500
-                #if len(moves)>=11 and random.random() < uniform_density()/(4*weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
-                if len(moves)>=11:
+                #if len(moves)>=11 and elo>=1100 and random.random() < uniform_density()/(weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
+                if len(moves)>=11 and elo >= 2200:
                     del start_index
                     start_index = random.randint(10,len(moves)-1)
+                    max_index = min(150,len(moves)-1)
+                    #max_index = start_index+4
                     #make the start_index first moves
                     del board 
                     board = chess.Board()
@@ -104,7 +108,7 @@ def generate_batch(batch_size,in_pgn):
 
                     x_start = x_start[start_index-(history):]
                     x_start = np.concatenate([x[:,:,:12] for x in x_start],axis=-1)
-                    for i,move in enumerate(moves[start_index:]):
+                    for i,move in enumerate(moves[start_index:max_index]):
 
                         if total_pos%batch_size==0 and len(x)!=0:
                             x = np.array(x,dtype=np.float32)
@@ -132,7 +136,15 @@ def generate_batch(batch_size,in_pgn):
                         y_true.append(ys)
                         total_pos+=1
                         
-
+def generate_batch_dir(batch_size,in_dir):
+    for in_pgn in os.listdir(in_dir):
+        print(in_pgn)
+        gen = generate_batch(batch_size,os.path.join(in_dir,in_pgn))
+        while True:
+            try:
+                yield next(gen)
+            except:
+                break
 
 def mirror_uci_string(uci_string):
     """
@@ -224,12 +236,12 @@ def get_board_data(pgn,board,real_move,move_number):
         try:
             elo = pgn.headers["WhiteElo"]
         except:
-            elo = '3000'
+            elo = '1500'
     else:
         try:
             elo = pgn.headers["BlackElo"]
         except:
-            elo = '3000'
+            elo = '1500'
     try:
         TC = pgn.headers['TimeControl']
     except:
@@ -579,27 +591,29 @@ class data_gen():
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
         ray.init(object_store_memory=7*10**9)
-        self.gen = generator_uniform(pgn,batch_size)
+        self.gen = generator_uniform2(pgn,batch_size)
         self.out_channels = 102
         
     def get_batch(self):
         return next(self.gen)
     
 def test():
+    import matplotlib.pyplot as plt
+    import tensorflow as tf
     params = {
-        'batch_size': 256,
-        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/human2.pgn'
+        'batch_size': 1024,
+        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/pros_pgn/'
     }
     gen = data_gen(params)
-    for i in range(int(1e20)):
+    arr = []
+    for i in range(3000):
         x,y = gen.get_batch()
         print(i, x[0].shape,x[1].shape)
-
 
 @ray.remote(num_cpus=1)
 class RemoteWorker(object):
     def __init__(self,batch_size,in_pgn):
-        self.gen = generate_batch(batch_size,in_pgn)
+        self.gen = generate_batch_dir(batch_size,in_pgn)
 
     def get_next(self):
         return next(self.gen)

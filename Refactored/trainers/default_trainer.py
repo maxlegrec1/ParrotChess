@@ -19,7 +19,7 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 def train_step(batch,model,gradient_acc_steps = 1):
     x,y_true = batch
     #all non negative values should be 1
-    mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float32) 
+    mask = tf.cast(tf.math.greater_equal(y_true,0),tf.float16) 
     y_true = tf.nn.relu(y_true)
     if gradient_acc_steps==1:
         with tf.GradientTape() as tape:
@@ -29,8 +29,10 @@ def train_step(batch,model,gradient_acc_steps = 1):
                 #lm = y_all['value']
                 #loss = tf.keras.losses.categorical_crossentropy(tf.stop_gradient(y_true),y_pred)
                 loss =tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(y_true),logits=y_pred) 
-                
-                gradients = tape.gradient(loss, model.trainable_variables)
+                scaled_loss = model.optimizer.get_scaled_loss(loss)
+                scaled_grads = tape.gradient(scaled_loss,model.trainable_variables)
+                #gradients = tape.gradient(loss, model.trainable_variables)
+                gradients = model.optimizer.get_unscaled_gradients(scaled_grads)
         
         gradients, _ = tf.clip_by_global_norm(gradients, 10000)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -77,6 +79,7 @@ def trainer(params):
 
 
 def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, resume_id, start_from, total_num_steps):
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     if resume_id == None:
         id = wandb.util.generate_id()
         wandb.init(project='owt', id= id, resume = 'allow')
