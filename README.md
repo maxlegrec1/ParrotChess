@@ -17,7 +17,6 @@ Based on Leela Chess Zero newest transformer architecture, our models learn to p
 | Model             | Policy Accuracy |
 | ---               | ---             |
 | Maia              | 53 %            |
-| DeepMind's GM AI  | 57 %            |
 | ParrotChess       | 58 %            |
 
 
@@ -58,7 +57,7 @@ The models are trained through supervised learning with games extracted from the
 
 ### Download a dataset 
 
-Using the [previous link](https://database.lichess.org/) to download a dataset (pgn file) and put it in the ParrotChess directory ```ParrotChess/```.
+Using the [previous link](https://database.lichess.org/) to download pgn files, and put them inside the same folder. This folder will be ``` path_pgn``` that you have to enter in the config.
 
 ### Chose training hyperparameters
 
@@ -81,9 +80,35 @@ Connect to weights and biases through the terminal if needed.
 This section is unfinished, and will cover all the data transformation.
 
 This section should in term, cover the rejection sampling algorithm, shuffle by transposing, Parallel Generation.
-## Metrics
+### Input Shape
+
+The networks have two inputs ```Input1``` and ```Input2``` of respective shape ```(_,8,8,102)``` and ```(_,8,8,2)```.
+
+The first 96 planes of ```Input1``` correspond to the current and last 7 positions. The remaining 6 planes correspond to Castling Rights (4), En Passant Right (1), and Color (1).
+
+The 2 planes of ```Input2``` correspond to the time control of the game in minutes, normalized by 300, and the elo of the player, normalized between 0 and 1. 
+
+## Losses and Metrics
 
 Click [here](https://wandb.ai/maxlegrec/owt) to see the training losses and other metrics.
+
+## Available models
+
+### ParrotChess
+The first model that I trained over 2M steps with batch size 256 on games of every elo.
+The architecture is a Transformer Encoder with 15 layers, 1024 embedding size, 1536 dense feed-forward, for a total of 140M parameters. 
+
+It achieves 57.5% of policy accuracy overall.
+
+Download the model [here](https://wandb.ai/maxlegrec/owt/runs/9puxko1e/files?nw=nwusermaxlegrec)
+
+### ParrotChess Pro
+The second model that I have trained, on games of elite players (2400+ on lichess).
+The architecture is a Mixture of Experts Transformer Encoder of 10 layers, 512 embedding size, 16*736 dense feed-forward, for a total of 100M parameters. 
+
+Download the model [here](https://wandb.ai/maxlegrec/owt/runs/t4sltaps/files?nw=nwusermaxlegrec)
+
+It achieves over 62% accuracy on the move of pro players. Way better than [Leela Chess Zero](https://lczero.org/)'s BT4 network at depth 0.
 ## Acknowledgements
 
  - [Maia Chess](https://maiachess.com/)
