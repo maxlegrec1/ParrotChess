@@ -10,7 +10,7 @@ import time
 cwd = os.getcwd()
 sys.path.append(cwd)
 
-from Refactored.data_gen.gen_TC import get_x_from_board,swap_side
+from Refactored.data_gen.gen_TC import get_x_from_board,swap_side,policy_index
 
 def list_uci_to_input(list_of_moves,elo,TC):
     board = chess.Board()
@@ -33,14 +33,22 @@ def list_uci_to_input(list_of_moves,elo,TC):
     #add last position
     X.append(get_x_from_board(elo,board,TC))
 
-
+    if board.turn == chess.BLACK:
+        board = board.mirror()
+    lm =   np.ones(1858,dtype=np.float32)*(-1000)
+    for possible in board.legal_moves:
+        possible_str = possible.uci()
+        if possible_str[-1]!='n':
+            lm[policy_index.index(possible_str)] = 0
+        else:
+             lm[policy_index.index(possible_str[:-1])] = 0
 
 
     X_final = np.concatenate([x[:,:,:12] for x in X[-8:-1]], axis = -1)
     X_final = np.concatenate([X_final,X[-1]], axis = -1)
 
 
-    return [np.expand_dims(X_final[:,:,:-2],axis = 0),np.expand_dims(X_final[:,:,-2:],axis=0)]
+    return [np.expand_dims(X_final[:,:,:-2],axis = 0),np.expand_dims(X_final[:,:,-2:],axis=0)],lm
 
 
 if __name__=="__main__":

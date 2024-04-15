@@ -73,7 +73,7 @@ def generate_batch(batch_size,in_pgn):
     xs = []
     ys = []
     #with codecs.open(in_pgn,'r',"ISO-8859-1") as f:
-    with open(in_pgn) as f:
+    with open(in_pgn,encoding="utf8") as f:
         while True:
             #load game
             del pgn
@@ -82,11 +82,11 @@ def generate_batch(batch_size,in_pgn):
                 del moves
                 moves = [move for move in pgn.mainline_moves()]
                 try: 
-                    elo = int(pgn.headers["WhiteElo"])
+                    elo = min(int(pgn.headers["WhiteElo"]),int(pgn.headers["BlackElo"]))
                 except:
                     elo = 1500
                 #if len(moves)>=11 and elo>=1100 and random.random() < uniform_density()/(weibull_min.pdf(elo,3.781083215802374, 355.0827163803461, 1421.9764397854142)):
-                if len(moves)>=11 and elo >= 2200:
+                if len(moves)>=11 and elo >= 2200 and 'FEN' not in pgn.headers.keys() and '960' not in pgn.headers['Event'] and 'Odds' not in pgn.headers['Event'] and 'house' not in pgn.headers['Event'] :
                     del start_index
                     start_index = random.randint(10,len(moves)-1)
                     max_index = min(150,len(moves)-1)
@@ -145,6 +145,7 @@ def generate_batch_dir(batch_size,in_dir):
                 yield next(gen)
             except:
                 break
+    print("finished all pgns")
 
 def mirror_uci_string(uci_string):
     """
@@ -154,6 +155,7 @@ def mirror_uci_string(uci_string):
         return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3]))
     else:
         return uci_string[0] + str(9 - int(uci_string[1])) + uci_string[2] + str(9 - int(uci_string[3])) + uci_string[4]
+ 
 
 
 
@@ -572,7 +574,6 @@ def generator_uniform2(pgn,batch_size):
         del n_batches_ref
         n_batches_ref = [generator.get_next.remote()]
 
-  
         x,y= n_batches[0]
         Xs=x[:,:,:,:-2]
         Es=x[:,:,:,-2:]
@@ -590,7 +591,7 @@ class data_gen():
         self.params = params
         batch_size = params.get('batch_size')
         pgn = params.get('path_pgn')
-        ray.init(object_store_memory=7*10**9)
+        ray.init(object_store_memory=6*10**9)
         self.gen = generator_uniform2(pgn,batch_size)
         self.out_channels = 102
         
@@ -602,7 +603,7 @@ def test():
     import tensorflow as tf
     params = {
         'batch_size': 1024,
-        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/pros_pgn/'
+        'path_pgn': '/media/maxime/Crucial X8/GitRefactored/ParrotChess/chesscom/'
     }
     gen = data_gen(params)
     arr = []
@@ -616,9 +617,13 @@ class RemoteWorker(object):
         self.gen = generate_batch_dir(batch_size,in_pgn)
 
     def get_next(self):
+
         return next(self.gen)
 
 
 if __name__ == '__main__':
-
-    test()
+    one_pgn_iterator = generate_batch(1024,'/media/maxime/Crucial X8/GitRefactored/ParrotChess/chesscom/test.pgn')
+    for i in range(10000000):
+        print(i)
+        x,y = next(one_pgn_iterator)
+    #test()

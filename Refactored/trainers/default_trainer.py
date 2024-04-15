@@ -88,6 +88,7 @@ def train(gen, model, num_step, lr_start ,lr, warmup_steps, num_report_steps, re
         wandb.init(project='owt', id= id, resume = 'allow')
         model.load_weights(wandb.restore(f"model_last_{id}.h5").name)
     #create a log file where we will store the results. It shall be named after the current date and time
+    model.load_weights("wandb/run-20240412_203623-otv7m6o6/files/model_last_otv7m6o6.h5")
     print("id : " ,id)
     total_steps = start_from*num_report_steps
     best_model_acc = 0
